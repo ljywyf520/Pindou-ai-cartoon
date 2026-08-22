@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f6f1" />
+    <title>豆格工坊 · 拼豆图纸转换器</title>
+    <link rel="stylesheet" href="./styles.css?v=20260822-chibi2" />
+    <link rel="stylesheet" href="./chibiStyles.css?v=20260822-chibi3" />
+  </head>
+  <body>
+    <header class="topbar"><a class="brand" href="./" aria-label="豆格工坊首页"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>豆格工坊</span></a>
+      <div class="license-banner inactive" id="license-banner"><span class="license-badge free">免费体验</span><span>预览带水印 · 导出需授权码</span></div>
+      <div class="privacy-note"><span class="privacy-dot"></span>图片只在浏览器本地处理</div></header>
+    <main class="shell">
+      <section class="intro"><div><p class="eyebrow">BEAD PATTERN STUDIO / 01</p><h1>把喜欢的画面，<br /><em>变成可制作的拼豆图纸。</em></h1><p class="intro-copy">上传一张图片，调整格数和色彩，马上看到每一颗拼豆的位置。</p></div><div class="intro-meta"><span>本地转换</span><span>PNG / CSV 导出</span><span>适合打印</span></div></section>
+      <section class="workspace" aria-label="拼豆图纸转换工作台">
+        <aside class="controls">
+          <div class="control-heading"><span class="step-number">01</span><div><h2>选择图片</h2><p>JPG、PNG、WebP，最大 20 MB</p></div></div>
+          <label class="upload-box" for="image-input" id="upload-box"><input id="image-input" type="file" accept="image/jpeg,image/png,image/webp" /><span class="upload-icon" aria-hidden="true">↑</span><strong>拖拽图片到这里</strong><small>或点击选择本地文件</small></label>
+          <div class="image-tools" id="image-tools" hidden><button class="tool-button" id="rotate-left" type="button" title="向左旋转 90 度">↶ <span>左转</span></button><button class="tool-button" id="rotate-right" type="button" title="向右旋转 90 度">↷ <span>右转</span></button><label class="crop-select"><span>裁剪</span><select id="crop-ratio"><option value="original">原图比例</option><option value="1:1">1 : 1</option><option value="4:3">4 : 3</option><option value="3:4">3 : 4</option><option value="16:9">16 : 9</option></select></label><button class="tool-button apply" id="apply-crop" type="button">应用</button></div>
+          <button class="text-button" id="replace-image" type="button" hidden>更换图片</button><div class="rule"></div>
+          <div class="rule"></div>
+          <div class="control-heading"><span class="step-number">02</span><div><h2>图纸设置</h2><p>尺寸越小，细节越简洁</p></div></div>
+          <label class="select-field"><span>拼豆规格</span><select id="bead-size"><option value="2.6">2.6 mm 迷你拼豆</option><option value="5" selected>5 mm 标准拼豆</option></select></label>
+          <div class="field-grid compact-fields"><label class="field"><span>横向格数 <output id="grid-width-output">48</output></span><input id="grid-width" type="range" min="16" max="200" value="48" step="1" /></label><label class="field"><span>纵向格数 <output id="grid-height-output">自动</output></span><input id="grid-height" type="number" min="8" max="200" value="48" step="1" /></label></div>
+          <p class="size-hint" id="size-hint">当前预计图纸：48 × 48 格</p><p class="warning" id="size-warning" hidden>图纸尺寸较大，导出和打印可能需要更长时间。</p>
+          <div class="segmented" role="group" aria-label="转换模式"><button class="mode active" type="button" data-mode="bead">拼豆优化</button><button class="mode" type="button" data-mode="photo">尽量保真</button></div>
+          <div class="field-grid two-fields"><label class="field"><span>最多颜色 <output id="max-colors-output">不限</output></span><input id="max-colors" type="range" min="0" max="60" value="0" step="1" /></label><label class="field"><span>颜色容差 <output id="tolerance-output">中</output></span><input id="tolerance" type="range" min="0" max="40" value="12" step="1" /></label></div>
+          <label class="select-field"><span>拼豆色板</span><select id="palette-source"><option value="fusion">融合常用色板</option><option value="perler">Perler 风格色板</option></select></label>
+          <div class="rule"></div>
+          <label class="select-field"><span>色号体系</span><select id="brand-system"><option value="MARD">MARD 常用色号</option><option value="COCO">COCO 常用色号</option><option value="MANMAN">MANMAN 常用色号</option><option value="PANPAN">PANPAN 常用色号</option><option value="MIXIAOWO">MIXIAOWO 常用色号</option></select></label>
+          <div class="palette-heading"><span>启用颜色</span><button type="button" id="palette-toggle" class="link-button">全选</button></div><div class="palette-picker" id="palette-picker" aria-label="启用或禁用颜色"></div>
+          <div class="rule"></div>
+          <div class="sub-heading">图纸外观</div>
+          <div class="field-grid two-fields"><label class="field"><span>边框大小 <output id="border-output">1</output></span><input id="border-size" type="range" min="0" max="4" value="1" step="1" /></label><label class="field"><span>网格线粗细 <output id="line-output">0.5</output></span><input id="line-width" type="range" min="0" max="3" value="0.5" step="0.5" /></label></div>
+          <label class="toggle-row"><span><b>显示网格线</b><small>拼豆颗粒之间的分隔线</small></span><input id="show-grid" type="checkbox" checked /></label>
+          <label class="toggle-row"><span><b>5×5 分块线</b><small>每 5 格用淡紫线划分，方便数格子</small></span><input id="show-block-grid" type="checkbox" checked /></label>
+          <label class="toggle-row"><span><b>显示格内色号</b><small>打印视图每个格子显示完整色卡编号</small></span><input id="show-codes" type="checkbox" checked /></label>
+          <label class="toggle-row"><span><b>忽略边缘白色</b><small>自动裁剪图片四周的白色区域</small></span><input id="trim-background" type="checkbox" /></label>
+          <div class="flip-controls"><button type="button" class="tool-button" id="mirror-x">⇔ 水平翻转</button><button type="button" class="tool-button" id="flip-y">⇕ 垂直翻转</button></div>
+          <div class="rule"></div>
+          <div class="sub-heading" style="margin-top:0">🖼️图片预处理</div>
+            <div class="preprocess-info">
+              <p class="preprocess-tip">📌 预处理：把照片/复杂插画转为适合拼豆的平涂像素稿</p>
+              <p class="preprocess-note">⚠️ 全部处理在浏览器本地完成，图片不会上传外部服务器</p>
+              <p class="preprocess-suggest">💡 建议：处理完成后直接应用图片，再生成拼豆图纸</p>
+            </div>
+            <div class="field-grid two-fields">
+              <label class="field"><span>像素颗粒尺寸 <output id="pixel-size-output">16</output></span><input id="pixel-size" type="range" min="4" max="120" value="16" step="1" /></label>
+              <label class="field"><span>最大颜色数量 <output id="pixel-colors-output">16</output></span><input id="pixel-colors" type="range" min="4" max="36" value="16" step="1" /></label>
+            </div>
+            <label class="toggle-row"><span><b>强制平涂去渐变</b><small>消除色彩过渡，输出硬色块</small></span><input id="force-flat" type="checkbox" checked /></label>
+            <label class="toggle-row"><span><b>轮廓强化</b><small>增强物体边缘线条，更清晰</small></span><input id="edge-enhance" type="checkbox" /></label>
+            <div class="preprocess-preview-wrap">
+              <div class="preprocess-preview-head"><span>预处理预览</span></div>
+              <canvas id="preprocess-preview" class="preprocess-preview-canvas"></canvas>
+              <div class="preprocess-preview-empty" id="preprocess-preview-empty">上传图片后自动预览</div>
+            </div>
+            <div class="preprocess-actions">
+              <button class="tool-button apply" id="apply-preprocess" type="button" disabled>应用到当前图片</button>
+              <button class="tool-button" id="reset-preprocess" type="button" disabled>重置预处理</button>
+            </div>
+          </div>
+
+          <!-- ===== AI Q版人物生成 ===== -->
+          <div class="chibi-section" id="chibi-section" hidden>
+            <div class="section-title">AI Q版人物生成</div>
+            <div class="section-desc">上传真人照片，一键生成可爱的 Q 版像素小人，再转拼豆图纸</div>
+
+            <div class="chibi-preset-grid" id="chibi-style-grid">
+              <button type="button" class="chibi-preset-card active" data-style="super_chibi">
+                <div class="preset-name">🥰 超萌大头Q版</div>
+                <div class="preset-desc">首推！2头身超萌</div>
+              </button>
+              <button type="button" class="chibi-preset-card" data-style="pixel_art">
+                <div class="preset-name">🎮 像素画Q版</div>
+                <div class="preset-desc">马赛克格子</div>
+              </button>
+              <button type="button" class="chibi-preset-card" data-style="photo_chibi">
+                <div class="preset-name">📷 照片转Q版</div>
+                <div class="preset-desc">更像本人</div>
+              </button>
+              <button type="button" class="chibi-preset-card" data-style="sticker">
+                <div class="preset-name">✨ 可爱贴纸风</div>
+                <div class="preset-desc">简约平涂</div>
+              </button>
+            </div>
+
+            <div class="chibi-two-col">
+              <div class="chibi-control-row">
+                <label>发型</label>
+                <select id="chibi-hair">
+                  <option value="auto">自动识别</option>
+                  <option value="long_wavy">长卷发</option>
+                  <option value="long_straight">长直发</option>
+                  <option value="short_bob">短发波波头</option>
+                  <option value="short">短发</option>
+                  <option value="twin_tails">双马尾</option>
+                  <option value="ponytail">马尾辫</option>
+                  <option value="bangs">齐刘海</option>
+                </select>
+              </div>
+              <div class="chibi-control-row">
+                <label>服装</label>
+                <select id="chibi-clothing">
+                  <option value="auto">自动识别</option>
+                  <option value="dress">连衣裙</option>
+                  <option value="skirt_jacket">外套+裙子</option>
+                  <option value="hoodie">卫衣</option>
+                  <option value="skirt_top">上衣+裙子</option>
+                  <option value="pants">上衣+裤子</option>
+                  <option value="school">校服</option>
+                  <option value="casual">休闲装</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="chibi-control-row">
+              <label class="chibi-prompt-label">
+                <span>自定义描述</span>
+                <span class="chibi-prompt-count" id="chibi-prompt-count">0 字</span>
+              </label>
+              <input type="text" id="chibi-prompt" class="chibi-prompt-input" placeholder="例如：粉色连衣裙，戴眼镜，比耶姿势" maxlength="100" />
+            </div>
+
+            <label class="chibi-checkbox-row">
+              <input type="checkbox" id="chibi-use-ref" checked />
+              <span>使用照片参考（生成的人物更像本人）</span>
+            </label>
+
+            <button type="button" class="chibi-generate-btn" id="chibi-generate" disabled>
+              <span class="btn-icon">🎨</span>
+              <span>生成 Q 版像素人物</span>
+            </button>
+
+            <div class="chibi-status" id="chibi-status"></div>
+
+            <div class="chibi-license-group">
+              <input type="text" id="chibi-license-input" placeholder="输入Q版授权码（PIDOU-XXXX-XXXX-XXXX）" autocomplete="off" />
+              <button type="button" id="chibi-activate" class="secondary-button">激活Q版</button>
+            </div>
+          </div>
+
+          <button class="primary-button generate-button" id="generate" type="button" disabled><span>生成图纸</span><span aria-hidden="true">→</span></button><button class="reset-button" id="reset" type="button">清空并重新开始</button>
+        </aside>
+        <section class="canvas-panel">
+          <div class="canvas-toolbar"><div><span class="toolbar-title">预览工作区</span><span class="toolbar-subtitle" id="canvas-size">等待图片</span></div><span class="local-badge">本地处理</span></div>
+          <div class="preview-frame" id="preview-frame"><div class="empty-state" id="empty-state"><div class="empty-grid" aria-hidden="true"></div><h2>从一张图片开始</h2><p>上传后会在这里并排看到原图与拼豆图纸</p></div><div class="dual-preview" id="dual-preview" hidden>
+            <article class="preview-card source-card"><div class="preview-card-head"><span>原图预览</span><small id="source-size">—</small></div><div class="preview-canvas-wrap" id="source-wrap"><canvas id="source-canvas"></canvas></div><div class="preview-controls"><button type="button" id="source-zoom-out" aria-label="原图缩小">−</button><span id="source-zoom-label">100%</span><button type="button" id="source-zoom-in" aria-label="原图放大">＋</button><button type="button" id="source-zoom-reset" class="reset-zoom">重置</button></div></article>
+            <article class="preview-card pattern-card"><div class="preview-card-head"><div><span id="pattern-label">拼豆图纸 · 打印图纸</span><small class="view-note" id="pattern-note">每格显示色卡原始色号</small></div><small id="pattern-size">等待生成</small></div><div class="pattern-tabs" role="tablist" aria-label="图纸视图模式"><button class="view-tab" type="button" data-view="color">彩色颗粒</button><button class="view-tab active" type="button" data-view="number">打印图纸</button></div><div class="preview-canvas-wrap" id="pattern-wrap"><canvas id="pattern-canvas"></canvas><div class="pattern-placeholder" id="pattern-placeholder">点击左侧"生成图纸"</div></div><div class="preview-controls"><button type="button" id="pattern-zoom-out" aria-label="图纸缩小">−</button><span id="pattern-zoom-label">100%</span><button type="button" id="pattern-zoom-in" aria-label="图纸放大">＋</button><button type="button" id="pattern-zoom-reset" class="reset-zoom">重置</button></div><section class="inline-stats" id="inline-stats" hidden><div class="stats-resize-handle" id="stats-resize-handle" title="拖动调整色卡面板高度" aria-label="拖动调整色卡面板高度"></div><div class="stats-head"><div><strong>色卡用量</strong><small id="stats-total">共 0 颗拼豆</small></div><div class="stats-actions"><button type="button" class="copy-button" id="copy-list">复制色卡清单</button><button type="button" class="stats-collapse" id="stats-collapse" aria-expanded="true">收起</button></div></div><p class="print-hint" id="print-hint" hidden>每个格子均显示对应色卡编号。</p><div class="stats-list" id="stats-list"></div></section></article>
+          </div></div>
+          <div class="canvas-footer"><span id="status-line">还没有生成图纸</span><span id="loading-line" class="loading-line" hidden>正在生成拼豆图纸，请稍候…</span></div>
+        </section>
+      </section>
+      <section class="results" id="results" hidden><div class="result-header"><div><p class="eyebrow">PATTERN SUMMARY / 02</p><h2>导出与统计</h2><p class="result-note">视图切换、翻转和缩放只改变前端渲染，不会重新转换。</p></div><div class="result-actions"><label class="export-check"><input id="append-list" type="checkbox" checked /> 导出时拼接色卡清单</label><button class="secondary-button" id="download-beads" type="button">彩色效果图 PNG</button><button class="secondary-button" id="download-pattern" type="button">打印图纸 PNG</button><button class="secondary-button" id="download-csv" type="button">导出 CSV</button></div></div>
+        <div class="license-panel" id="license-panel">
+          <div class="license-panel-info"><span class="license-panel-label">导出额度</span><strong id="credits-display">0 次</strong></div>
+          <div class="license-input-group"><input type="text" id="license-input" placeholder="输入授权码（PIDOU-XXXX-XXXX-XXXX）" autocomplete="off" /><button type="button" id="license-activate" class="secondary-button">激活</button></div>
+        </div>
+        <div class="summary-cards"><article><span>图纸尺寸</span><strong id="summary-size">-</strong><small>横 × 纵</small></article><article><span>拼豆总数</span><strong id="summary-beads">-</strong><small>不含留白区域</small></article><article><span>使用颜色</span><strong id="summary-colors">-</strong><small id="summary-brand">已匹配色板</small></article><article><span>拼豆板估算</span><strong id="summary-boards">-</strong><small>按当前规格估算</small></article></div></section>
+    </main>
+    <footer>豆格工坊 · 本地浏览器图像处理 · 转换核心使用 bear-code bead-core（MIT）</footer>
+
+    <!-- 付费引导弹窗 -->
+    <div class="paywall-modal-overlay" id="paywall-modal" hidden>
+      <div class="paywall-modal">
+        <button class="paywall-close" id="paywall-close">&times;</button>
+        <h3 id="paywall-title">导出无水印图纸需要授权码</h3>
+        <p id="paywall-desc">您可以一直免费预览图纸（带水印），导出无水印高清图纸需要授权码。</p>
+        <div class="paywall-actions">
+          <input type="text" id="paywall-license-input" placeholder="输入授权码" autocomplete="off" />
+          <button type="button" id="paywall-activate" class="primary-button">激活授权码</button>
+        </div>
+        <p class="paywall-hint">已有授权码？输入后立即激活。还没有？请联系商家获取。</p>
+      </div>
+    </div>
+
+    <script type="module" src="./app.js?v=20260822-chibi2"></script>
+  </body>
+</html>

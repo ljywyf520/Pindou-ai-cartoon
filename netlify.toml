@@ -1,0 +1,15 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+# /api/seedream 转发到 Netlify Function
+[[redirects]]
+  from = "/api/seedream"
+  to = "/.netlify/functions/seedream"
+  status = 200
+
+# 根路径默认跳转到 studio
+[[redirects]]
+  from = "/"
+  to = "/studio/"
+  status = 301

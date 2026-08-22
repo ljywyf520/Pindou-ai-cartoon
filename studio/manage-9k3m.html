@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>豆格工坊 · 后台管理</title>
+    <style>
+      :root{--ink:#263029;--muted:#6e786d;--paper:#f7f6f1;--panel:#fffefa;--line:#dce0d7;--accent:#d66343;--sage:#8fa57d}
+      *{box-sizing:border-box}body{margin:0;padding:40px 20px;color:var(--ink);font:15px/1.5 Inter,ui-sans-serif,system-ui,"Microsoft YaHei",sans-serif;background:var(--paper)}
+      h1{margin:0 0 6px;font-size:24px}
+      h2{margin:32px 0 12px;font-size:18px;border-bottom:2px solid var(--line);padding-bottom:6px}
+      .desc{color:var(--muted);font-size:13px;margin:0 0 24px}
+      .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:20px;margin-bottom:16px}
+      .row{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+      label{font-size:13px;font-weight:600;min-width:80px}
+      input,select{min-height:36px;padding:0 10px;border:1px solid #cbd4c5;border-radius:6px;font-size:13px;font-family:inherit}
+      input[type=number]{width:100px}
+      button{min-height:38px;padding:0 16px;border:0;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer}
+      .btn-primary{background:var(--accent);color:#fff}
+      .btn-primary:hover{background:#bc4c34}
+      .btn-sage{background:var(--sage);color:#fff}
+      .btn-sage:hover{background:#7a9468}
+      .btn-ghost{background:transparent;border:1px solid #cbd4c5;color:var(--muted)}
+      .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+      .code-list{margin-top:16px}
+      .code-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;margin-bottom:6px;border:1px solid var(--line);border-radius:6px;background:#fbfcf8;font-size:14px;font-family:monospace}
+      .code-item .meta{color:var(--muted);font-size:12px;font-family:inherit}
+      .code-item .actions{display:flex;gap:6px}
+      .code-item .actions button{min-height:30px;padding:0 10px;font-size:11px}
+      .empty{color:var(--muted);font-size:13px;text-align:center;padding:20px}
+      .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+      .stat-card{padding:16px;border:1px solid var(--line);border-radius:8px;background:var(--panel);text-align:center}
+      .stat-card .num{font-size:28px;font-weight:800;color:var(--accent)}
+      .stat-card .label{font-size:12px;color:var(--muted);margin-top:4px}
+      .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:8px;background:#3a4a35;color:#fff;font-size:13px;opacity:0;transition:.3s;pointer-events:none}
+      .toast.show{opacity:1}
+      .warn{color:#c4762a;font-size:12px;margin-top:8px}
+      @media(max-width:600px){.stat-grid{grid-template-columns:1fr}.row{flex-direction:column;align-items:stretch}label{min-width:0}}
+    </style>
+  </head>
+  <body>
+    <h1>豆格工坊 · 后台管理</h1>
+    <p class="desc">生成授权码、查看已生成的授权码记录。此页面仅供商家使用，请勿对外公开。</p>
+
+    <h2>生成授权码</h2>
+    <div class="card">
+      <div class="row">
+        <label>授权类型</label>
+        <select id="gen-type">
+          <option value="times">按次使用（图纸导出）</option>
+          <option value="permanent">永久会员（图纸导出）</option>
+          <option value="chibi">Q版次数包（AI生成）</option>
+        </select>
+      </div>
+      <div class="row" id="credits-row">
+        <label id="credits-label">导出次数</label>
+        <input type="number" id="gen-credits" value="10" min="1" max="999" />
+        <span id="credits-hint" style="color:var(--muted);font-size:12px">客户可导出无水印图纸的次数</span>
+      </div>
+      <div class="row">
+        <label>生成数量</label>
+        <input type="number" id="gen-count" value="1" min="1" max="50" />
+        <button class="btn-primary" id="generate-btn">生成授权码</button>
+      </div>
+      <p class="warn">注意：授权码生成后请妥善保存，发给客户后即生效。授权码无法撤销已使用次数。</p>
+    </div>
+
+    <h2>已生成的授权码</h2>
+    <div class="card">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="num" id="stat-total">0</div><div class="label">总授权码数</div></div>
+        <div class="stat-card"><div class="num" id="stat-times">0</div><div class="label">按次导出码</div></div>
+        <div class="stat-card"><div class="num" id="stat-perm">0</div><div class="label">永久会员码</div></div>
+        <div class="stat-card"><div class="num" id="stat-chibi">0</div><div class="label">Q版次数包码</div></div>
+      </div>
+      <div class="code-list" id="code-list">
+        <div class="empty">还没有生成过授权码</div>
+      </div>
+      <div class="row" style="margin-top:16px">
+        <button class="btn-ghost" id="export-btn">导出所有授权码（JSON）</button>
+        <button class="btn-ghost" id="clear-btn">清空记录</button>
+      </div>
+    </div>
+
+    <h2>授权码说明</h2>
+    <div class="card">
+      <p style="font-size:13px;line-height:1.8;color:var(--muted);margin:0">
+        <b>按次授权码</b>：客户输入后获得指定次数的无水印导出额度，每导出一次图纸消耗 1 次。<br>
+        <b>永久授权码</b>：客户输入后可无限导出无水印图纸，并获赠 35 次 Q版生成额度。<br>
+        <b>Q版次数包</b>：独立的AI Q版生成额度，在Q版面板单独激活，与图纸导出分开计费。<br>
+        <b>Q版免费体验</b>：所有用户享有 3 次免费 Q版生成，用完后需激活Q版次数包或永久会员。<br>
+        <b>链接带码</b>：图纸导出码可用 <code>?code=PIDOU-XXXX-XXXX-XXXX</code>，Q版码可用 <code>?qcode=PIDOU-XXXX-XXXX-XXXX</code>，客户打开网页自动激活。
+      </p>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script type="module">
+      import { generateLicense } from './license.js';
+
+      const STORAGE_KEY = 'pidou_admin_codes';
+
+      function loadCodes() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+      }
+      function saveCodes(codes) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(codes));
+      }
+      function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2000);
+      }
+
+      function renderCodes() {
+        const codes = loadCodes();
+        const list = document.getElementById('code-list');
+        const total = codes.length;
+        const times = codes.filter(c => c.type === 'times').length;
+        const perm = codes.filter(c => c.type === 'permanent').length;
+        const chibi = codes.filter(c => c.type === 'chibi').length;
+        document.getElementById('stat-total').textContent = total;
+        document.getElementById('stat-times').textContent = times;
+        document.getElementById('stat-perm').textContent = perm;
+        document.getElementById('stat-chibi').textContent = chibi;
+
+        if (total === 0) {
+          list.innerHTML = '<div class="empty">还没有生成过授权码</div>';
+          return;
+        }
+        list.innerHTML = codes.slice().reverse().map((c, i) => {
+          const idx = total - 1 - i;
+          let typeLabel, typeClass;
+          if (c.type === 'permanent') { typeLabel = '永久'; typeClass = '永久会员'; }
+          else if (c.type === 'chibi') { typeLabel = `${c.credits}次`; typeClass = 'Q版次数包'; }
+          else { typeLabel = `${c.credits}次`; typeClass = '按次导出'; }
+          const linkParam = c.type === 'chibi' ? 'qcode' : 'code';
+          return `<div class="code-item">
+            <div>
+              <span>${c.code}</span>
+              <span class="meta"> · ${typeClass} · ${typeLabel} · ${new Date(c.created).toLocaleString('zh-CN')}</span>
+            </div>
+            <div class="actions">
+              <button class="btn-ghost" onclick="copyCode('${c.code}')">复制</button>
+              <button class="btn-ghost" onclick="copyLink('${c.code}','${linkParam}')">复制链接</button>
+              <button class="btn-ghost" onclick="deleteCode(${idx})" style="color:#d44040">删除</button>
+            </div>
+          </div>`;
+        }).join('');
+      }
+
+      window.copyCode = function(code) {
+        navigator.clipboard.writeText(code).then(() => showToast('授权码已复制'));
+      };
+      window.copyLink = function(code, param) {
+        const p = param || 'code';
+        const url = `${location.origin}${location.pathname.replace('manage-9k3m.html','')}?${p}=${code}`;
+        navigator.clipboard.writeText(url).then(() => showToast('链接已复制'));
+      };
+      window.deleteCode = function(idx) {
+        const codes = loadCodes();
+        codes.splice(idx, 1);
+        saveCodes(codes);
+        renderCodes();
+        showToast('已删除');
+      };
+
+      document.getElementById('gen-type').addEventListener('change', (e) => {
+        const val = e.target.value;
+        const creditsRow = document.getElementById('credits-row');
+        const creditsLabel = document.getElementById('credits-label');
+        const creditsHint = document.getElementById('credits-hint');
+        if (val === 'permanent') {
+          creditsRow.style.display = 'none';
+        } else if (val === 'chibi') {
+          creditsRow.style.display = 'flex';
+          creditsLabel.textContent = 'Q版次数';
+          creditsHint.textContent = '客户可使用 AI Q版生成的次数';
+          document.getElementById('gen-credits').value = 5;
+        } else {
+          creditsRow.style.display = 'flex';
+          creditsLabel.textContent = '导出次数';
+          creditsHint.textContent = '客户可导出无水印图纸的次数';
+          document.getElementById('gen-credits').value = 10;
+        }
+      });
+
+      document.getElementById('generate-btn').addEventListener('click', () => {
+        const type = document.getElementById('gen-type').value;
+        const credits = parseInt(document.getElementById('gen-credits').value, 10) || 1;
+        const count = parseInt(document.getElementById('gen-count').value, 10) || 1;
+        const codes = loadCodes();
+        for (let i = 0; i < count; i++) {
+          const code = generateLicense(type, credits);
+          codes.push({ code, type, credits: type === 'permanent' ? -1 : credits, created: Date.now() });
+        }
+        saveCodes(codes);
+        renderCodes();
+        showToast(`已生成 ${count} 个授权码`);
+      });
+
+      document.getElementById('export-btn').addEventListener('click', () => {
+        const codes = loadCodes();
+        if (!codes.length) { showToast('没有可导出的授权码'); return; }
+        const blob = new Blob([JSON.stringify(codes, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `授权码记录-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+      });
+
+      document.getElementById('clear-btn').addEventListener('click', () => {
+        if (confirm('确定清空所有授权码记录吗？此操作不可撤销。')) {
+          saveCodes([]);
+          renderCodes();
+          showToast('已清空');
+        }
+      });
+
+      renderCodes();
+    </script>
+  </body>
+</html>

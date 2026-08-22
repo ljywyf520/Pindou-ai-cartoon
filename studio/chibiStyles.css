@@ -1,0 +1,267 @@
+/* ===== AI Q版人物生成模块 ===== */
+
+.chibi-section {
+  margin-top: 18px;
+  padding: 14px;
+  background: linear-gradient(135deg, #fff5f7 0%, #f0f7ff 100%);
+  border: 1px solid #e8d8e0;
+  border-radius: 6px;
+}
+
+.chibi-section .section-title {
+  font-size: 13px;
+  font-weight: 750;
+  color: #a24e6a;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chibi-section .section-title::before {
+  content: '✨';
+  font-size: 14px;
+}
+
+.chibi-section .section-desc {
+  font-size: 11px;
+  color: #8a7078;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.chibi-control-row {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.chibi-control-row label {
+  font-size: 11px;
+  font-weight: 650;
+  color: #5a4a52;
+}
+
+.chibi-control-row select,
+.chibi-control-row input[type="text"] {
+  width: 100%;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid #d4c8cc;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.chibi-control-row select:focus,
+.chibi-control-row input[type="text"]:focus {
+  outline: none;
+  border-color: #d66388;
+  box-shadow: 0 0 0 2px rgba(214, 99, 136, 0.15);
+}
+
+.chibi-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.chibi-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #6a5a62;
+  margin: 8px 0;
+}
+
+.chibi-checkbox-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #d66388;
+}
+
+.chibi-generate-btn {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 6px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 5px;
+  background: linear-gradient(135deg, #e07096 0%, #d66388 100%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.chibi-generate-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #d65580 0%, #c8507a 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(214, 99, 136, 0.3);
+}
+
+.chibi-generate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chibi-generate-btn .btn-icon {
+  font-size: 16px;
+}
+
+.chibi-status {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #7a6a72;
+  min-height: 16px;
+}
+
+.chibi-status.success {
+  color: #4a8a5a;
+}
+
+.chibi-status.error {
+  color: #c85050;
+}
+
+.chibi-license-group {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  align-items: center;
+}
+
+.chibi-license-group input {
+  flex: 1;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid #cbd4c5;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: monospace;
+}
+
+.chibi-license-group input:focus {
+  border-color: #d66388;
+  outline: none;
+}
+
+.chibi-license-group input.error {
+  border-color: #c85050;
+  animation: shake 0.3s ease;
+}
+
+.chibi-license-group button {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.chibi-loading {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #e0c8d0;
+  border-top-color: #d66388;
+  border-radius: 50%;
+  animation: chibi-spin 0.8s linear infinite;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+@keyframes chibi-spin {
+  to { transform: rotate(360deg); }
+}
+
+.chibi-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin: 8px 0 4px;
+}
+
+.chibi-preset-card {
+  padding: 8px;
+  border: 1px solid #d4c8cc;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+}
+
+.chibi-preset-card:hover {
+  border-color: #d66388;
+  background: #fff5f8;
+}
+
+.chibi-preset-card.active {
+  border-color: #d66388;
+  background: #fff0f4;
+  box-shadow: 0 0 0 2px rgba(214, 99, 136, 0.15);
+}
+
+.chibi-preset-card .preset-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #5a4a52;
+  margin-bottom: 2px;
+}
+
+.chibi-preset-card .preset-desc {
+  font-size: 10px;
+  color: #9a8a92;
+}
+
+.chibi-model-select {
+  margin-top: 4px;
+  font-size: 10px;
+  color: #8a7a82;
+}
+
+.chibi-model-select select {
+  width: 100%;
+  margin-top: 4px;
+  padding: 4px 6px;
+  font-size: 11px;
+  border: 1px solid #d4c8cc;
+  border-radius: 3px;
+  background: #fff;
+}
+
+.chibi-prompt-input {
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 8px;
+  border: 1px solid #d4c8cc;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 11px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.chibi-prompt-input:focus {
+  outline: none;
+  border-color: #d66388;
+}
+
+.chibi-prompt-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chibi-prompt-count {
+  font-size: 10px;
+  color: #aaa;
+  font-weight: 400;
+}
