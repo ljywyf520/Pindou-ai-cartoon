@@ -38,6 +38,8 @@
 .stats-actions{display:flex;align-items:center;gap:6px}
 .copy-button,.stats-collapse{padding:5px 8px;border:1px solid #b8c8ae;color:#54704c;background:#f4f8ef;font-size:10px}
 .stats-collapse{color:#65715f;background:#fff}
+.upload-success{margin-top:10px;padding:10px 14px;display:flex;align-items:center;justify-content:center;gap:6px;color:#4a7c44;background:#eef7ec;border:1px solid #b8d4b0;border-radius:6px;font-size:13px;font-weight:650;animation:fadeInUp .3s ease}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .stats-list{height:calc(100% - 49px);max-height:none;overflow:auto}
 .inline-stats.collapsed{height:43px;min-height:43px}
 .inline-stats.collapsed .stats-resize-handle,.inline-stats.collapsed .stats-list,.inline-stats.collapsed .print-hint{display:none}

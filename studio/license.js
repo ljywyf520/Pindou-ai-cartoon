@@ -12,7 +12,7 @@ const SECRET = 0x5A3D7B ^ 0x1F2C4E;
 const STORAGE_KEY = 'pidou_license';
 const CHIBI_STORAGE_KEY = 'pidou_chibi_license';
 const CHIBI_FREE_USED_KEY = 'pidou_chibi_free_used';
-export const FREE_CHIBI_LIMIT = 3;
+export const FREE_CHIBI_LIMIT = 2;
 export const PERMANENT_CHIBI_CREDITS = 35;
 
 // ============================================================

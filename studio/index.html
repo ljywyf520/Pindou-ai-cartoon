@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f7f6f1" />
     <title>豆格工坊 · 拼豆图纸转换器</title>
-    <link rel="stylesheet" href="./styles.css?v=20260825-zoom1" />
-    <link rel="stylesheet" href="./chibiStyles.css?v=20260825-zoom1" />
+    <link rel="stylesheet" href="./styles.css?v=20260825-upload1" />
+    <link rel="stylesheet" href="./chibiStyles.css?v=20260825-upload1" />
   </head>
   <body>
     <header class="topbar"><a class="brand" href="./" aria-label="豆格工坊首页"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>豆格工坊</span></a>
@@ -19,7 +19,7 @@
           <div class="control-heading"><span class="step-number">01</span><div><h2>选择图片</h2><p>JPG、PNG、WebP，最大 20 MB</p></div></div>
           <label class="upload-box" for="image-input" id="upload-box"><input id="image-input" type="file" accept="image/jpeg,image/png,image/webp" /><span class="upload-icon" aria-hidden="true">↑</span><strong>拖拽图片到这里</strong><small>或点击选择本地文件</small></label>
           <div class="image-tools" id="image-tools" hidden><button class="tool-button" id="rotate-left" type="button" title="向左旋转 90 度">↶ <span>左转</span></button><button class="tool-button" id="rotate-right" type="button" title="向右旋转 90 度">↷ <span>右转</span></button><label class="crop-select"><span>裁剪</span><select id="crop-ratio"><option value="original">原图比例</option><option value="1:1">1 : 1</option><option value="4:3">4 : 3</option><option value="3:4">3 : 4</option><option value="16:9">16 : 9</option></select></label><button class="tool-button apply" id="apply-crop" type="button">应用</button></div>
-          <button class="text-button" id="replace-image" type="button" hidden>更换图片</button><div class="rule"></div>
+          <button class="text-button" id="replace-image" type="button" hidden>更换图片</button><div class="upload-success" id="upload-success" hidden>已上传 ✓ 下滑查看</div><div class="rule"></div>
           <div class="rule"></div>
           <div class="control-heading"><span class="step-number">02</span><div><h2>图纸设置</h2><p>尺寸越小，细节越简洁</p></div></div>
           <label class="select-field"><span>拼豆规格</span><select id="bead-size"><option value="2.6">2.6 mm 迷你拼豆</option><option value="5" selected>5 mm 标准拼豆</option></select></label>
@@ -148,6 +148,6 @@
       </div>
     </div>
 
-    <script type="module" src="./app.js?v=20260825-zoom1"></script>
+    <script type="module" src="./app.js?v=20260825-upload1"></script>
   </body>
 </html>
