@@ -1,11 +1,10 @@
 import { runPipeline, prepareSourcePixels, computeColorStats, countTotalBeads } from '../bead-core-main/dist/index.js';
 import { palette, backgroundPaletteIds } from './palette.js';
-import { cartoonizePixelArt, pixelatePreview } from './pixelCartoon.js';
 import { generateChibi } from './chibiGenerator.js';
 import { activateLicense, activateChibiLicense, getLicenseState, consumeExport, canGenerateChibi, consumeChibi, checkUrlCode } from './license.js';
 
 const $ = (selector) => document.querySelector(selector);
-const state = { image: null, grid: null, resultPalette: [], stats: [], rawResult: null, patternWidth: 0, patternHeight: 0, mode: 'bead', patternView: 'color', sourceZoom: 1, patternZoom: 1, mirrorX: false, flipY: false, enabled: new Set(palette.map((item) => item.id)), codesHidden: false, originalImage: null };
+const state = { image: null, grid: null, resultPalette: [], stats: [], rawResult: null, patternWidth: 0, patternHeight: 0, mode: 'bead', patternView: 'color', sourceZoom: 1, patternZoom: 1, mirrorX: false, flipY: false, enabled: new Set(palette.map((item) => item.id)), codesHidden: false, originalImage: null, baseGridWidth: 48 };
 
 // ============================================================
 // 授权 & 水印系统
@@ -189,16 +188,16 @@ function normalizeConversionResult(result, fallbackPalette) {
 // 【本次色差修复】所有品牌下拉选项统一使用用户提供的实体色卡。
 const activePalette = () => { const enabled = palette.filter((item) => state.enabled.has(item.id)); return enabled.length ? enabled : [palette[0]]; };
 function status(message) { $('#status-line').textContent = message; }
-function updateOutputs() { const width = Number($('#grid-width').value); $('#grid-width-output').textContent = width; $('#grid-height-output').textContent = $('#grid-height').dataset.manual === 'true' ? $('#grid-height').value : '自动'; const max = Number($('#max-colors').value); $('#max-colors-output').textContent = max ? max : '不限'; const tolerance = Number($('#tolerance').value); $('#tolerance-output').textContent = tolerance < 8 ? '低' : tolerance < 24 ? '中' : '高'; $('#border-output').textContent = $('#border-size').value; const height = targetHeight(); $('#size-hint').textContent = `当前预计图纸：${width} × ${height} 格`; $('#size-warning').hidden = width * height <= 9000; }
+function updateOutputs() { const width = Number($('#grid-width').value); $('#grid-width-output').textContent = width; $('#zoom-scale-output').textContent = `${$('#zoom-scale').value}%`; const max = Number($('#max-colors').value); $('#max-colors-output').textContent = max ? max : '不限'; const tolerance = Number($('#tolerance').value); $('#tolerance-output').textContent = tolerance < 8 ? '低' : tolerance < 24 ? '中' : '高'; const height = targetHeight(); $('#size-hint').textContent = `当前预计图纸：${width} × ${height} 格`; $('#size-warning').hidden = width * height <= 9000; }
 // 【缺色修复】UI 的颜色容差不是 bear-code 的 ΔE 合并阈值。默认关闭区域合并，最高只传 2，避免浅肤色被合并成白色。
 function mergeThresholdValue() { return Math.min(2, Math.floor(Number($('#tolerance').value) / 20)); }
-function targetHeight() { if (!state.image) return Number($('#grid-height').value) || 48; if ($('#grid-height').dataset.manual === 'true') return Math.min(200, Math.max(8, Number($('#grid-height').value) || 48)); return Math.min(200, Math.max(8, Math.round(Number($('#grid-width').value) * state.image.naturalHeight / state.image.naturalWidth))); }
+function targetHeight() { if (!state.image) return 48; return Math.min(200, Math.max(8, Math.round(Number($('#grid-width').value) * state.image.naturalHeight / state.image.naturalWidth))); }
 // 【本次手机适配】手机端 100% 初始视图按容器宽度缩放，放大后恢复可滚动的大图。
 function setCanvasDisplay(canvas, zoom) { const wrap = canvas.parentElement; const mobile = window.matchMedia('(max-width: 820px)').matches; const available = wrap ? Math.max(1, wrap.clientWidth - 36) : canvas.width; const baseWidth = mobile ? Math.min(canvas.width, available) : canvas.width; const displayWidth = Math.max(1, Math.round(baseWidth * zoom)); const displayHeight = Math.max(1, Math.round(canvas.height * (displayWidth / Math.max(1, canvas.width)))); canvas.style.width = `${displayWidth}px`; canvas.style.height = `${displayHeight}px`; }
 function drawSource() { if (!state.image) return; const scale = Math.min(1, 900 / Math.max(state.image.naturalWidth, state.image.naturalHeight)); sourceCanvas.width = Math.max(1, Math.round(state.image.naturalWidth * scale)); sourceCanvas.height = Math.max(1, Math.round(state.image.naturalHeight * scale)); sourceContext.imageSmoothingEnabled = true; sourceContext.clearRect(0, 0, sourceCanvas.width, sourceCanvas.height); sourceContext.drawImage(state.image, 0, 0, sourceCanvas.width, sourceCanvas.height); setCanvasDisplay(sourceCanvas, state.sourceZoom); $('#source-size').textContent = `${state.image.naturalWidth} × ${state.image.naturalHeight}`; }
 function updatePreview() { const hasImage = Boolean(state.image); $('#empty-state').hidden = hasImage; $('#dual-preview').hidden = !hasImage; patternCanvas.hidden = !state.grid; $('#pattern-placeholder').hidden = Boolean(state.grid); if (hasImage) { setCanvasDisplay(sourceCanvas, state.sourceZoom); if (state.grid) setCanvasDisplay(patternCanvas, state.patternZoom); } }
-function setImage(image) { state.image = image; state.grid = null; state.resultPalette = []; state.rawResult = null; state.stats = []; state.sourceZoom = 1; state.patternZoom = 1; state.mirrorX = false; state.flipY = false; drawSource(); updatePreview(); $('#generate').disabled = false; $('#replace-image').hidden = false; $('#image-tools').hidden = false; $('#results').hidden = true; $('#inline-stats').hidden = true; $('#canvas-size').textContent = `${image.naturalWidth} × ${image.naturalHeight} 像素`; status('图片已载入，请设置参数后生成图纸'); updateOutputs(); }
-function loadImage(file) { if (!file || !file.type.startsWith('image/')) return; if (file.size > 20 * 1024 * 1024) { status('图片超过 20 MB，请压缩后再试'); return; } const url = URL.createObjectURL(file); const image = new Image(); image.onload = () => { URL.revokeObjectURL(url); state.originalImage = image; setImage(image); resetPreprocess(); }; image.onerror = () => { URL.revokeObjectURL(url); status('图片读取失败，请换一张图片'); }; image.src = url; }
+function setImage(image) { state.image = image; state.grid = null; state.resultPalette = []; state.rawResult = null; state.stats = []; state.sourceZoom = 1; state.patternZoom = 1; state.mirrorX = false; state.flipY = false; state.baseGridWidth = Number($('#grid-width').value) || 48; drawSource(); updatePreview(); $('#generate').disabled = false; $('#replace-image').hidden = false; $('#image-tools').hidden = false; $('#results').hidden = true; $('#inline-stats').hidden = true; $('#canvas-size').textContent = `${image.naturalWidth} × ${image.naturalHeight} 像素`; status('图片已载入，请设置参数后生成图纸'); updateOutputs(); }
+function loadImage(file) { if (!file || !file.type.startsWith('image/')) return; if (file.size > 20 * 1024 * 1024) { status('图片超过 20 MB，请压缩后再试'); return; } const url = URL.createObjectURL(file); const image = new Image(); image.onload = () => { URL.revokeObjectURL(url); state.originalImage = image; setImage(image); }; image.onerror = () => { URL.revokeObjectURL(url); status('图片读取失败，请换一张图片'); }; image.src = url; }
 function imageFromCanvas(canvas) { return new Promise((resolve) => { const image = new Image(); image.onload = () => resolve(image); image.src = canvas.toDataURL('image/png'); }); }
 async function rotateImage(direction) { if (!state.image) return; const source = state.image; const canvas = document.createElement('canvas'); canvas.width = source.naturalHeight; canvas.height = source.naturalWidth; const ctx = canvas.getContext('2d'); ctx.translate(canvas.width / 2, canvas.height / 2); ctx.rotate(direction * Math.PI / 2); ctx.drawImage(source, -source.naturalWidth / 2, -source.naturalHeight / 2); setImage(await imageFromCanvas(canvas)); status('图片已旋转，可继续调整后生成图纸'); }
 async function cropImage() { if (!state.image || $('#crop-ratio').value === 'original') { status('请选择一个裁剪比例'); return; } const [rw, rh] = $('#crop-ratio').value.split(':').map(Number); const source = state.image; const ratio = rw / rh; const sourceRatio = source.naturalWidth / source.naturalHeight; let cropWidth = source.naturalWidth; let cropHeight = source.naturalHeight; if (sourceRatio > ratio) cropWidth = Math.round(source.naturalHeight * ratio); else cropHeight = Math.round(source.naturalWidth / ratio); const sx = Math.round((source.naturalWidth - cropWidth) / 2); const sy = Math.round((source.naturalHeight - cropHeight) / 2); const canvas = document.createElement('canvas'); canvas.width = cropWidth; canvas.height = cropHeight; canvas.getContext('2d').drawImage(source, sx, sy, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight); setImage(await imageFromCanvas(canvas)); status(`已按 ${rw}:${rh} 居中裁剪`); }
@@ -208,11 +207,11 @@ function drawPattern(view = state.patternView, target = patternCanvas, options =
   if (!state.grid?.length) return { cell: 0, codesHidden: false };
   const grid = state.grid; const cols = grid[0].length; const rows = grid.length;
   // 打印视图使用固定大格子，滚动容器负责查看大图，保证每个格子都能显示完整色号。
-  const cell = view === 'number' ? 32 : Math.max(10, Math.min(28, Math.floor(1120 / Math.max(cols, rows)))); const border = Number($('#border-size').value); const showGrid = options.showGrid ?? $('#show-grid').checked; const showCodes = view === 'number'; const ctx = target.getContext('2d'); target.width = cols * cell + border * 2; target.height = rows * cell + border * 2; ctx.imageSmoothingEnabled = false; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, target.width, target.height);
+  const cell = view === 'number' ? 32 : Math.max(10, Math.min(28, Math.floor(1120 / Math.max(cols, rows)))); const border = 0; const showGrid = options.showGrid ?? true; const showCodes = view === 'number'; const ctx = target.getContext('2d'); target.width = cols * cell + border * 2; target.height = rows * cell + border * 2; ctx.imageSmoothingEnabled = false; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, target.width, target.height);
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { const sourceRow = state.flipY ? rows - 1 - r : r; const sourceCol = state.mirrorX ? cols - 1 - c : c; const rawCell = grid[sourceRow][sourceCol]; const item = resolveColor(rawCell); if (!item || (typeof rawCell === 'object' && rawCell.isExternal)) continue; const x = border + c * cell; const y = border + r * cell; const hex = item.hex || '#FFFFFF'; ctx.fillStyle = hex; ctx.fillRect(x, y, cell, cell); if (showCodes) { const code = codeFor(item, rawCell?.paletteId ?? rawCell); const rgb = (hex.match(/[A-Fa-f0-9]{2}/g) || ['FF', 'FF', 'FF']).map((value) => parseInt(value, 16)); const luminance = (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000; ctx.fillStyle = luminance > 150 ? '#20231f' : '#FFFFFF'; ctx.font = '700 12px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(code, x + cell / 2, y + cell / 2); ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic'; } }
   if (showGrid) { ctx.strokeStyle = 'rgba(37,42,35,.3)'; ctx.lineWidth = Math.max(.5, cell * .06); ctx.beginPath(); for (let c = 0; c <= cols; c++) { ctx.moveTo(border + c * cell, border); ctx.lineTo(border + c * cell, border + rows * cell); } for (let r = 0; r <= rows; r++) { ctx.moveTo(border, border + r * cell); ctx.lineTo(border + cols * cell, border + r * cell); } ctx.stroke(); }
   // 5×5 分块线：淡紫色、稍粗，每 5 格一条
-  const showBlockGrid = options.showBlockGrid ?? $('#show-block-grid')?.checked;
+  const showBlockGrid = options.showBlockGrid ?? true;
   if (showBlockGrid && cols >= 5 && rows >= 5) {
     const blockSize = 5;
     ctx.strokeStyle = 'rgba(147, 130, 212, 0.85)';
@@ -236,7 +235,7 @@ function renderCurrentPattern() { if (!state.grid) return; drawPattern(state.pat
 function generate() { if (!state.image) return; $('#generate').disabled = true; $('#loading-line').hidden = false; $('#loading-line').textContent = '正在生成拼豆图纸，请稍候…'; status('正在匹配色板 · 大尺寸图片可能需要几秒'); requestAnimationFrame(() => { try { const gridWidth = Number($('#grid-width').value); const gridHeight = targetHeight(); const imageWidth = gridWidth * 5; const imageHeight = gridHeight * 5; if (gridWidth * gridHeight > 10000) $('#loading-line').textContent = '正在生成拼豆图纸，请稍候… · 正在处理大尺寸图纸'; const work = document.createElement('canvas'); work.width = imageWidth; work.height = imageHeight; const ctx = work.getContext('2d', { willReadFrequently: true }); const scale = Math.max(imageWidth / state.image.naturalWidth, imageHeight / state.image.naturalHeight); const drawWidth = state.image.naturalWidth * scale; const drawHeight = state.image.naturalHeight * scale; ctx.drawImage(state.image, (imageWidth - drawWidth) / 2, (imageHeight - drawHeight) / 2, drawWidth, drawHeight); const imageData = ctx.getImageData(0, 0, imageWidth, imageHeight); // 【色差修复】不再额外增强对比度/饱和度，直接以原图颜色匹配实体色卡。
       const pixels = prepareSourcePixels(imageData.data, imageWidth, imageHeight, { brightness: 0, contrast: 0, saturation: 0 }, { denoise: false, sharpen: true });
       // 【此处接入bear-code项目转换接口函数】本次迭代只调整前端渲染，底层 bear-code 的 runPipeline 调用保持不变。
-      const result = runPipeline(pixels, imageWidth, imageHeight, { gridWidth, mode: state.mode === 'bead' ? 'dominant' : 'average', mergeThreshold: mergeThresholdValue(), maxColors: Number($('#max-colors').value), palette: activePalette(), backgroundPaletteIds: $('#trim-background').checked ? backgroundPaletteIds : [], excludedPaletteIds: [], flatTile: false });
+      const result = runPipeline(pixels, imageWidth, imageHeight, { gridWidth, mode: state.mode === 'bead' ? 'dominant' : 'average', mergeThreshold: mergeThresholdValue(), maxColors: Number($('#max-colors').value), palette: activePalette(), backgroundPaletteIds: backgroundPaletteIds, excludedPaletteIds: [], flatTile: false });
       // 【Q版人物修复】填补空单元格：未匹配到色板的格子自动匹配最近色，避免白色/浅色区域缺色
       if (result?.pixelGrid || result?.grid) {
         const grid = result.pixelGrid || result.grid;
@@ -282,7 +281,7 @@ function resetZoom(kind) { state[kind === 'source' ? 'sourceZoom' : 'patternZoom
 function csvText() { const rows = [['色号', '颜色十六进制', '颗粒数量'], ...state.stats.map((item, index) => [statCode(item, index), item.hex || '', item.count || 0])]; return '\ufeff' + rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n'); }
 function downloadBlob(blob, filename) { const link = document.createElement('a'); link.download = filename; link.href = URL.createObjectURL(blob); link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 500); }
 // 【本次迭代新增：导出模块】按当前前端视图导出，并可将色卡清单拼接到图片底部。
-function exportCanvas(view) { const canvas = document.createElement('canvas'); drawPattern(view, canvas, { showGrid: view === 'number' ? true : $('#show-grid').checked, showBlockGrid: $('#show-block-grid')?.checked ?? true }); if (!$('#append-list').checked || !state.stats.length) return canvas; const rowHeight = 28; const padding = 14; const out = document.createElement('canvas'); out.width = canvas.width; out.height = canvas.height + padding * 2 + 25 + state.stats.length * rowHeight; const ctx = out.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, out.width, out.height); ctx.drawImage(canvas, 0, 0); ctx.fillStyle = '#f8faf5'; ctx.fillRect(0, canvas.height, out.width, out.height - canvas.height); ctx.fillStyle = '#263029'; ctx.font = '700 13px system-ui'; ctx.fillText(`色卡清单 · ${selectedBrand()}`, padding, canvas.height + 22); state.stats.forEach((item, index) => { const x = padding + (index % 3) * Math.max(150, Math.floor(out.width / 3)); const y = canvas.height + 45 + Math.floor(index / 3) * rowHeight; ctx.fillStyle = item.hex || '#fff'; ctx.fillRect(x, y - 11, 17, 17); ctx.strokeStyle = 'rgba(0,0,0,.16)'; ctx.strokeRect(x + .5, y - 10.5, 16, 16); ctx.fillStyle = '#263029'; ctx.font = '700 11px system-ui'; ctx.fillText(`${statCode(item, index)} · ${item.count || 0}颗`, x + 24, y + 2); }); return out; }
+function exportCanvas(view) { const canvas = document.createElement('canvas'); drawPattern(view, canvas, { showGrid: true, showBlockGrid: true }); if (!$('#append-list').checked || !state.stats.length) return canvas; const rowHeight = 28; const padding = 14; const out = document.createElement('canvas'); out.width = canvas.width; out.height = canvas.height + padding * 2 + 25 + state.stats.length * rowHeight; const ctx = out.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, out.width, out.height); ctx.drawImage(canvas, 0, 0); ctx.fillStyle = '#f8faf5'; ctx.fillRect(0, canvas.height, out.width, out.height - canvas.height); ctx.fillStyle = '#263029'; ctx.font = '700 13px system-ui'; ctx.fillText(`色卡清单 · ${selectedBrand()}`, padding, canvas.height + 22); state.stats.forEach((item, index) => { const x = padding + (index % 3) * Math.max(150, Math.floor(out.width / 3)); const y = canvas.height + 45 + Math.floor(index / 3) * rowHeight; ctx.fillStyle = item.hex || '#fff'; ctx.fillRect(x, y - 11, 17, 17); ctx.strokeStyle = 'rgba(0,0,0,.16)'; ctx.strokeRect(x + .5, y - 10.5, 16, 16); ctx.fillStyle = '#263029'; ctx.font = '700 11px system-ui'; ctx.fillText(`${statCode(item, index)} · ${item.count || 0}颗`, x + 24, y + 2); }); return out; }
 function downloadImage(view, filename) { if (!state.grid) return; const ls = getLicenseState(); if (!ls.canExport) { showPaywallModal('export'); return; } const result = consumeExport(); if (!result.success) { showPaywallModal('export'); return; } downloadBlob(dataUrlToBlob(exportCanvas(view).toDataURL('image/png')), filename); status(result.remaining === -1 ? '导出成功 · 永久会员' : `导出成功 · 剩余 ${result.remaining} 次`); updateLicenseUI(); }
 // 复制色卡清单到剪贴板
 function copyList() {
@@ -295,13 +294,15 @@ function copyList() {
   }
 }
 function dataUrlToBlob(dataUrl) { const [head, body] = dataUrl.split(','); const bytes = atob(body); const array = new Uint8Array(bytes.length); for (let i = 0; i < bytes.length; i++) array[i] = bytes.charCodeAt(i); return new Blob([array], { type: head.match(/data:(.*?);/)?.[1] || 'image/png' }); }
-function reset() { state.image = null; state.originalImage = null; state.grid = null; state.resultPalette = []; state.rawResult = null; state.stats = []; state.sourceZoom = 1; state.patternZoom = 1; state.mirrorX = false; state.flipY = false; state.enabled = new Set(palette.map((item) => item.id)); input.value = ''; $('#grid-width').value = 48; $('#grid-height').value = 48; delete $('#grid-height').dataset.manual; $('#max-colors').value = 0; $('#tolerance').value = 12; $('#results').hidden = true; $('#inline-stats').hidden = true; $('#generate').disabled = true; $('#replace-image').hidden = true; $('#image-tools').hidden = true; $('#dual-preview').hidden = true; $('#empty-state').hidden = false; $('#pattern-canvas').hidden = true; $('#canvas-size').textContent = '等待图片'; status('还没有生成图纸'); renderPalettePicker(); updateOutputs(); resetPreprocess(); }
+function reset() { state.image = null; state.originalImage = null; state.grid = null; state.resultPalette = []; state.rawResult = null; state.stats = []; state.sourceZoom = 1; state.patternZoom = 1; state.mirrorX = false; state.flipY = false; state.enabled = new Set(palette.map((item) => item.id)); input.value = ''; $('#grid-width').value = 48; $('#zoom-scale').value = 100; state.baseGridWidth = 48; $('#max-colors').value = 0; $('#tolerance').value = 12; $('#results').hidden = true; $('#inline-stats').hidden = true; $('#generate').disabled = true; $('#replace-image').hidden = true; $('#image-tools').hidden = true; $('#dual-preview').hidden = true; $('#empty-state').hidden = false; $('#pattern-canvas').hidden = true; $('#canvas-size').textContent = '等待图片'; status('还没有生成图纸'); renderPalettePicker(); updateOutputs(); }
 
 input.addEventListener('change', () => loadImage(input.files[0])); $('#replace-image').addEventListener('click', () => input.click()); $('#rotate-left').addEventListener('click', () => rotateImage(-1)); $('#rotate-right').addEventListener('click', () => rotateImage(1)); $('#apply-crop').addEventListener('click', cropImage); $('#reset').addEventListener('click', reset); $('#generate').addEventListener('click', generate);
 ['dragenter', 'dragover'].forEach((event) => uploadBox.addEventListener(event, (e) => { e.preventDefault(); uploadBox.classList.add('dragging'); })); ['dragleave', 'drop'].forEach((event) => uploadBox.addEventListener(event, (e) => { e.preventDefault(); uploadBox.classList.remove('dragging'); })); uploadBox.addEventListener('drop', (e) => loadImage(e.dataTransfer.files[0]));
-$('#grid-width').addEventListener('input', () => { if ($('#grid-height').dataset.manual !== 'true') $('#grid-height').value = targetHeight(); updateOutputs(); }); $('#grid-height').addEventListener('input', () => { $('#grid-height').dataset.manual = 'true'; updateOutputs(); }); ['max-colors', 'tolerance', 'border-size'].forEach((id) => $(`#${id}`).addEventListener('input', () => { updateOutputs(); if (id === 'border-size' && state.grid) renderCurrentPattern(); }));
+$('#zoom-scale').addEventListener('input', () => { const scale = Number($('#zoom-scale').value); const newWidth = Math.min(200, Math.max(16, Math.round(state.baseGridWidth * scale / 100))); $('#grid-width').value = newWidth; updateOutputs(); });
+$('#grid-width').addEventListener('input', () => { const currentWidth = Number($('#grid-width').value); const scale = Math.round(currentWidth / state.baseGridWidth * 100); $('#zoom-scale').value = Math.min(400, Math.max(25, scale)); updateOutputs(); });
+['max-colors', 'tolerance'].forEach((id) => $(`#${id}`).addEventListener('input', () => { updateOutputs(); }));
 document.querySelectorAll('.mode').forEach((button) => button.addEventListener('click', () => { state.mode = button.dataset.mode; document.querySelectorAll('.mode').forEach((item) => item.classList.toggle('active', item === button)); })); document.querySelectorAll('.view-tab').forEach((button) => button.addEventListener('click', () => { state.patternView = button.dataset.view; document.querySelectorAll('.view-tab').forEach((item) => item.classList.toggle('active', item === button)); renderCurrentPattern(); }));
-['show-grid', 'show-block-grid', 'show-codes', 'brand-system', 'palette-source', 'bead-size'].forEach((id) => $(`#${id}`).addEventListener('change', () => { if (id === 'brand-system') renderPalettePicker(); if (state.grid) { renderStats(); renderCurrentPattern(); } })); $('#palette-toggle').addEventListener('click', () => { state.enabled = state.enabled.size === palette.length ? new Set(['mard-h2']) : new Set(palette.map((item) => item.id)); renderPalettePicker(); });
+['brand-system', 'palette-source', 'bead-size'].forEach((id) => $(`#${id}`).addEventListener('change', () => { if (id === 'brand-system') renderPalettePicker(); if (state.grid) { renderStats(); renderCurrentPattern(); } })); $('#palette-toggle').addEventListener('click', () => { state.enabled = state.enabled.size === palette.length ? new Set(['mard-h2']) : new Set(palette.map((item) => item.id)); renderPalettePicker(); });
 $('#mirror-x').addEventListener('click', () => { state.mirrorX = !state.mirrorX; $('#mirror-x').classList.toggle('selected', state.mirrorX); renderCurrentPattern(); }); $('#flip-y').addEventListener('click', () => { state.flipY = !state.flipY; $('#flip-y').classList.toggle('selected', state.flipY); renderCurrentPattern(); });
 [['source', 'in', .15], ['source', 'out', -.15], ['pattern', 'in', .15], ['pattern', 'out', -.15]].forEach(([kind, direction, amount]) => $(`#${kind}-zoom-${direction}`).addEventListener('click', () => adjustZoom(kind, amount))); $('#source-zoom-reset').addEventListener('click', () => resetZoom('source')); $('#pattern-zoom-reset').addEventListener('click', () => resetZoom('pattern'));
 // 【本次查看体验修复】普通滚轮交给预览容器滚动；按住 Ctrl/Cmd 才缩放，避免大图无法上下浏览。
@@ -314,125 +315,6 @@ $('#stats-collapse').addEventListener('click', () => { const panel = $('#inline-
 (() => { const panel = $('#inline-stats'); const handle = $('#stats-resize-handle'); let startY = 0; let startHeight = 0; let resizing = false; handle.addEventListener('pointerdown', (event) => { if (panel.classList.contains('collapsed')) return; resizing = true; startY = event.clientY; startHeight = panel.getBoundingClientRect().height; handle.setPointerCapture?.(event.pointerId); document.body.classList.add('resizing-stats'); }); handle.addEventListener('pointermove', (event) => { if (!resizing) return; const next = Math.max(82, Math.min(340, startHeight + startY - event.clientY)); panel.style.height = `${Math.round(next)}px`; }); const stop = (event) => { if (!resizing) return; resizing = false; handle.releasePointerCapture?.(event.pointerId); document.body.classList.remove('resizing-stats'); }; handle.addEventListener('pointerup', stop); handle.addEventListener('pointercancel', stop); })();
 renderPalettePicker(); updateOutputs();
 window.addEventListener('resize', () => { if (state.image) { setCanvasDisplay(sourceCanvas, state.sourceZoom); if (state.grid) setCanvasDisplay(patternCanvas, state.patternZoom); } });
-// ===== 【本次迭代新增：图片预处理 - 像素卡通模块】 =====
-// 预处理控件状态
-let preprocessTimer = null;
-function resetPreprocess() {
-  document.getElementById('pixel-size').value = 16;
-  document.getElementById('pixel-colors').value = 16;
-  document.getElementById('force-flat').checked = true;
-  document.getElementById('edge-enhance').checked = false;
-  document.getElementById('pixel-size-output').textContent = '16';
-  document.getElementById('pixel-colors-output').textContent = '16';
-  document.getElementById('apply-preprocess').disabled = true;
-  document.getElementById('reset-preprocess').disabled = true;
-  const preview = document.getElementById('preprocess-preview');
-  if (preview) { preview.width = 0; preview.height = 0; }
-  const empty = document.getElementById('preprocess-preview-empty');
-  if (empty) empty.style.display = 'flex';
-}
-
-// 更新预处理预览（防抖）
-function updatePreprocessPreview() {
-  if (!state.image) return;
-  const pixelSize = Number(document.getElementById('pixel-size').value);
-  const maxColors = Number(document.getElementById('pixel-colors').value);
-  const forceFlat = document.getElementById('force-flat').checked;
-  const edgeEnhance = document.getElementById('edge-enhance').checked;
-  document.getElementById('pixel-size-output').textContent = pixelSize;
-  document.getElementById('pixel-colors-output').textContent = maxColors;
-
-  const preview = document.getElementById('preprocess-preview');
-  const empty = document.getElementById('preprocess-preview-empty');
-  const wrap = preview.parentElement;
-  const maxPreviewWidth = Math.min(280, (wrap?.clientWidth || 260) - 2);
-
-  requestAnimationFrame(() => {
-    try {
-      const result = pixelatePreview(state.image, pixelSize, maxPreviewWidth);
-      const ctx = preview.getContext('2d');
-      preview.width = result.width;
-      preview.height = result.height;
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(result, 0, 0);
-      empty.style.display = 'none';
-    } catch (e) {
-      // 预览失败时静默处理
-    }
-  });
-}
-
-// 预处理控件事件
-document.getElementById('pixel-size').addEventListener('input', () => {
-  clearTimeout(preprocessTimer);
-  preprocessTimer = setTimeout(updatePreprocessPreview, 80);
-});
-document.getElementById('pixel-colors').addEventListener('input', () => {
-  clearTimeout(preprocessTimer);
-  preprocessTimer = setTimeout(updatePreprocessPreview, 80);
-});
-document.getElementById('force-flat').addEventListener('change', () => {
-  clearTimeout(preprocessTimer);
-  preprocessTimer = setTimeout(updatePreprocessPreview, 80);
-});
-document.getElementById('edge-enhance').addEventListener('change', () => {
-  clearTimeout(preprocessTimer);
-  preprocessTimer = setTimeout(updatePreprocessPreview, 80);
-});
-
-// 应用到当前图片
-document.getElementById('apply-preprocess').addEventListener('click', async () => {
-  if (!state.image) return;
-  document.getElementById('apply-preprocess').disabled = true;
-  document.getElementById('apply-preprocess').textContent = '处理中…';
-  status('正在预处理图片…');
-  try {
-    const pixelSize = Number(document.getElementById('pixel-size').value);
-    const maxColors = Number(document.getElementById('pixel-colors').value);
-    const forceFlat = document.getElementById('force-flat').checked;
-    const edgeEnhance = document.getElementById('edge-enhance').checked;
-    const processed = await cartoonizePixelArt(state.image, { pixelSize, maxColors, forceFlat, edgeEnhance });
-    const newImage = await imageFromCanvas(processed);
-    setImage(newImage);
-    status('预处理完成，已替换原图，可以生成图纸了');
-    document.getElementById('reset-preprocess').disabled = false;
-  } catch (e) {
-    status('预处理失败，请重试');
-    console.error(e);
-  }
-  document.getElementById('apply-preprocess').disabled = false;
-  document.getElementById('apply-preprocess').textContent = '应用到当前图片';
-});
-
-// 重置预处理
-document.getElementById('reset-preprocess').addEventListener('click', () => {
-  if (state.originalImage) {
-    setImage(state.originalImage);
-    status('已恢复原始图片');
-  }
-  resetPreprocess();
-});
-
-// 图片上传后启用预处理控件
-function onImageChanged() {
-  const hasImage = Boolean(state.image);
-  document.getElementById('apply-preprocess').disabled = !hasImage;
-  document.getElementById('reset-preprocess').disabled = !hasImage || !state.originalImage;
-  if (hasImage) {
-    resetPreprocess();
-    updatePreprocessPreview();
-  }
-}
-
-// 拦截 setImage 以同步预处理状态
-const origSetImage = setImage;
-setImage = function(image) {
-  origSetImage(image);
-  if (state.image) {
-    document.getElementById('apply-preprocess').disabled = false;
-    document.getElementById('reset-preprocess').disabled = !state.originalImage || state.image === state.originalImage;
-  }
-};
 
 // ============================================================
 // AI Q版人物生成

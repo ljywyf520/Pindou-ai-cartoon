@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f7f6f1" />
     <title>豆格工坊 · 拼豆图纸转换器</title>
-    <link rel="stylesheet" href="./styles.css?v=20260822-chibi2" />
-    <link rel="stylesheet" href="./chibiStyles.css?v=20260822-chibi3" />
+    <link rel="stylesheet" href="./styles.css?v=20260825-zoom1" />
+    <link rel="stylesheet" href="./chibiStyles.css?v=20260825-zoom1" />
   </head>
   <body>
     <header class="topbar"><a class="brand" href="./" aria-label="豆格工坊首页"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>豆格工坊</span></a>
@@ -23,7 +23,8 @@
           <div class="rule"></div>
           <div class="control-heading"><span class="step-number">02</span><div><h2>图纸设置</h2><p>尺寸越小，细节越简洁</p></div></div>
           <label class="select-field"><span>拼豆规格</span><select id="bead-size"><option value="2.6">2.6 mm 迷你拼豆</option><option value="5" selected>5 mm 标准拼豆</option></select></label>
-          <div class="field-grid compact-fields"><label class="field"><span>横向格数 <output id="grid-width-output">48</output></span><input id="grid-width" type="range" min="16" max="200" value="48" step="1" /></label><label class="field"><span>纵向格数 <output id="grid-height-output">自动</output></span><input id="grid-height" type="number" min="8" max="200" value="48" step="1" /></label></div>
+          <div class="field-grid compact-fields"><label class="field"><span>缩放比例 <output id="zoom-scale-output">100%</output></span><input id="zoom-scale" type="range" min="25" max="400" value="100" step="5" /></label><label class="field"><span>横向格数 <output id="grid-width-output">48</output></span><input id="grid-width" type="range" min="16" max="200" value="48" step="1" /></label></div>
+          <label class="field" hidden><span>纵向格数</span><input id="grid-height" type="number" min="8" max="200" value="48" step="1" /></label>
           <p class="size-hint" id="size-hint">当前预计图纸：48 × 48 格</p><p class="warning" id="size-warning" hidden>图纸尺寸较大，导出和打印可能需要更长时间。</p>
           <div class="segmented" role="group" aria-label="转换模式"><button class="mode active" type="button" data-mode="bead">拼豆优化</button><button class="mode" type="button" data-mode="photo">尽量保真</button></div>
           <div class="field-grid two-fields"><label class="field"><span>最多颜色 <output id="max-colors-output">不限</output></span><input id="max-colors" type="range" min="0" max="60" value="0" step="1" /></label><label class="field"><span>颜色容差 <output id="tolerance-output">中</output></span><input id="tolerance" type="range" min="0" max="40" value="12" step="1" /></label></div>
@@ -32,36 +33,8 @@
           <label class="select-field"><span>色号体系</span><select id="brand-system"><option value="MARD">MARD 常用色号</option><option value="COCO">COCO 常用色号</option><option value="MANMAN">MANMAN 常用色号</option><option value="PANPAN">PANPAN 常用色号</option><option value="MIXIAOWO">MIXIAOWO 常用色号</option></select></label>
           <div class="palette-heading"><span>启用颜色</span><button type="button" id="palette-toggle" class="link-button">全选</button></div><div class="palette-picker" id="palette-picker" aria-label="启用或禁用颜色"></div>
           <div class="rule"></div>
-          <div class="sub-heading">图纸外观</div>
-          <div class="field-grid two-fields"><label class="field"><span>边框大小 <output id="border-output">1</output></span><input id="border-size" type="range" min="0" max="4" value="1" step="1" /></label><label class="field"><span>网格线粗细 <output id="line-output">0.5</output></span><input id="line-width" type="range" min="0" max="3" value="0.5" step="0.5" /></label></div>
-          <label class="toggle-row"><span><b>显示网格线</b><small>拼豆颗粒之间的分隔线</small></span><input id="show-grid" type="checkbox" checked /></label>
-          <label class="toggle-row"><span><b>5×5 分块线</b><small>每 5 格用淡紫线划分，方便数格子</small></span><input id="show-block-grid" type="checkbox" checked /></label>
-          <label class="toggle-row"><span><b>显示格内色号</b><small>打印视图每个格子显示完整色卡编号</small></span><input id="show-codes" type="checkbox" checked /></label>
-          <label class="toggle-row"><span><b>忽略边缘白色</b><small>自动裁剪图片四周的白色区域</small></span><input id="trim-background" type="checkbox" /></label>
           <div class="flip-controls"><button type="button" class="tool-button" id="mirror-x">⇔ 水平翻转</button><button type="button" class="tool-button" id="flip-y">⇕ 垂直翻转</button></div>
           <div class="rule"></div>
-          <div class="sub-heading" style="margin-top:0">🖼️图片预处理</div>
-            <div class="preprocess-info">
-              <p class="preprocess-tip">📌 预处理：把照片/复杂插画转为适合拼豆的平涂像素稿</p>
-              <p class="preprocess-note">⚠️ 全部处理在浏览器本地完成，图片不会上传外部服务器</p>
-              <p class="preprocess-suggest">💡 建议：处理完成后直接应用图片，再生成拼豆图纸</p>
-            </div>
-            <div class="field-grid two-fields">
-              <label class="field"><span>像素颗粒尺寸 <output id="pixel-size-output">16</output></span><input id="pixel-size" type="range" min="4" max="120" value="16" step="1" /></label>
-              <label class="field"><span>最大颜色数量 <output id="pixel-colors-output">16</output></span><input id="pixel-colors" type="range" min="4" max="36" value="16" step="1" /></label>
-            </div>
-            <label class="toggle-row"><span><b>强制平涂去渐变</b><small>消除色彩过渡，输出硬色块</small></span><input id="force-flat" type="checkbox" checked /></label>
-            <label class="toggle-row"><span><b>轮廓强化</b><small>增强物体边缘线条，更清晰</small></span><input id="edge-enhance" type="checkbox" /></label>
-            <div class="preprocess-preview-wrap">
-              <div class="preprocess-preview-head"><span>预处理预览</span></div>
-              <canvas id="preprocess-preview" class="preprocess-preview-canvas"></canvas>
-              <div class="preprocess-preview-empty" id="preprocess-preview-empty">上传图片后自动预览</div>
-            </div>
-            <div class="preprocess-actions">
-              <button class="tool-button apply" id="apply-preprocess" type="button" disabled>应用到当前图片</button>
-              <button class="tool-button" id="reset-preprocess" type="button" disabled>重置预处理</button>
-            </div>
-          </div>
 
           <!-- ===== AI Q版人物生成 ===== -->
           <div class="chibi-section" id="chibi-section" hidden>
@@ -176,6 +149,6 @@
       </div>
     </div>
 
-    <script type="module" src="./app.js?v=20260822-chibi2"></script>
+    <script type="module" src="./app.js?v=20260825-zoom1"></script>
   </body>
 </html>
