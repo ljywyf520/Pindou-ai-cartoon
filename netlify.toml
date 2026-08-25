@@ -1,5 +1,6 @@
 [build]
-  publish = "."
+  command = "npm run build"
+  publish = "dist"
   functions = "netlify/functions"
 
 # /api/seedream 转发到 Netlify Function
@@ -8,8 +9,7 @@
   to = "/.netlify/functions/seedream"
   status = 200
 
-# 根路径默认跳转到 studio
 [[redirects]]
-  from = "/"
-  to = "/studio/"
-  status = 301
+  from = "/*"
+  to = "/index.html"
+  status = 200
