@@ -16,6 +16,7 @@ export default function AdminPanel({ session }) {
   const [aiCount, setAiCount] = useState(3);
   const [createMsg, setCreateMsg] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   const loadUsers = async () => {
     setLoading(true);
@@ -32,12 +33,14 @@ export default function AdminPanel({ session }) {
 
   const loadCodes = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await adminListRedeemCodes(session.token, 50, 0);
       setCodes(res.codes);
       setCodeTotal(res.total);
     } catch (e) {
       console.error('加载兑换码列表失败', e);
+      setLoadError(e.message || '加载失败');
     } finally {
       setLoading(false);
     }
@@ -215,6 +218,7 @@ export default function AdminPanel({ session }) {
               </div>
 
               {loading && <div className="admin-loading">加载中…</div>}
+              {loadError && <div className="notice error" style={{ marginBottom: '12px' }}><span>✕</span><span>{loadError}</span></div>}
 
               <div className="admin-table-wrap">
                 <table className="admin-table">
