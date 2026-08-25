@@ -105,7 +105,7 @@ const MARK_CODE_USED = /* GraphQL */ `
   mutation MarkCodeUsed($codeId: ID!, $userId: ID!) {
     update_redeem_code_by_pk(
       pk_columns: { id: $codeId }
-      _set: { status: "used", used_by: $userId, used_at: "now" }
+      _set: { status: "used", used_by_id: $userId, used_at: "now" }
     ) {
       id
       status
@@ -263,7 +263,7 @@ const ADMIN_REDEEM_LIST = /* GraphQL */ `
       export_count
       ai_count
       status
-      used_by
+      used_by_id
       used_at
     }
     redeem_code_aggregate {
