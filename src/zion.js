@@ -246,11 +246,6 @@ const ADMIN_USER_LIST = /* GraphQL */ `
       remaining_ai_count
       membership_status
     }
-    user_aggregate {
-      aggregate {
-        count
-      }
-    }
   }
 `;
 
@@ -265,11 +260,6 @@ const ADMIN_REDEEM_LIST = /* GraphQL */ `
       status
       used_by_id
       used_at
-    }
-    redeem_code_aggregate {
-      aggregate {
-        count
-      }
     }
   }
 `;
@@ -311,7 +301,7 @@ export async function adminListUsers(token, limit = 20, offset = 0) {
   const data = await request(ADMIN_USER_LIST, { limit, offset }, token);
   return {
     users: data.user || [],
-    total: data.user_aggregate?.aggregate?.count ?? 0,
+    total: (data.user || []).length,
   };
 }
 
@@ -320,7 +310,7 @@ export async function adminListRedeemCodes(token, limit = 20, offset = 0) {
   const data = await request(ADMIN_REDEEM_LIST, { limit, offset }, token);
   return {
     codes: data.redeem_code || [],
-    total: data.redeem_code_aggregate?.aggregate?.count ?? 0,
+    total: (data.redeem_code || []).length,
   };
 }
 
