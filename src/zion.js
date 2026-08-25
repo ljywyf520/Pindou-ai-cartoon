@@ -114,7 +114,7 @@ const MARK_CODE_USED = /* GraphQL */ `
 `;
 
 const ADD_USER_BENEFITS = /* GraphQL */ `
-  mutation AddUserBenefits($userId: ID!, $exportDelta: Int!, $aiDelta: Int!, $membership: String) {
+  mutation AddUserBenefits($userId: ID!, $exportDelta: bigint!, $aiDelta: bigint!, $membership: String) {
     update_user_by_pk(
       pk_columns: { id: $userId }
       _inc: { remaining_export_count: $exportDelta, remaining_ai_count: $aiDelta }
@@ -275,7 +275,7 @@ const ADMIN_REDEEM_LIST = /* GraphQL */ `
 `;
 
 const ADMIN_CREATE_REDEEM = /* GraphQL */ `
-  mutation AdminCreateRedeem($code: String!, $type: String!, $exportCount: Int!, $aiCount: Int!) {
+  mutation AdminCreateRedeem($code: String!, $type: String!, $exportCount: bigint!, $aiCount: bigint!) {
     insert_redeem_code_one(
       object: {
         code: $code
