@@ -236,17 +236,15 @@ function App() {
 
   async function handleRedeem(code) {
     if (!session?.token || !profile?.id) {
-      setStatus({ kind: 'error', text: '请先登录再兑换。' });
-      return false;
+      return { success: false, message: '请先登录再兑换。' };
     }
 
     try {
       const updated = await redeemCode(code.trim().toUpperCase(), profile.id, session.token);
       setProfile(updated);
-      return true;
+      return { success: true, message: '兑换成功！权益已到账。' };
     } catch (error) {
-      setStatus({ kind: 'error', text: error.message || '兑换失败，请检查兑换码是否正确。' });
-      return false;
+      return { success: false, message: error.message || '兑换失败，请检查兑换码是否正确。' };
     }
   }
 
@@ -512,10 +510,12 @@ function RedeemView({ onRedeem, profile }) {
 
     setBusy(true);
     setMessage(null);
-    const success = await onRedeem(code);
-    if (success) {
-      setMessage({ kind: 'success', text: '兑换成功！权益已到账。' });
+    const result = await onRedeem(code);
+    if (result.success) {
+      setMessage({ kind: 'success', text: result.message });
       setCode('');
+    } else {
+      setMessage({ kind: 'error', text: result.message });
     }
     setBusy(false);
   };
