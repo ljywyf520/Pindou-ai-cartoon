@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { convertImageToBeads, drawPatternCanvas, drawWatermark, exportCSV } from './beadUtils.js';
+import { convertImageToBeads, drawPatternCanvas, drawWatermark, exportCSV, exportPatternWithLegend } from './beadUtils.js';
 
 const DEFAULT_GRID_WIDTH = 48;
 const WATERMARK_TEXT = '十三工坊 仅供预览';
@@ -145,9 +145,8 @@ export default function BeadConverter({ userProfile, onExportUsed, session, pres
       if (!success) return;
     }
 
-    // 高清导出：cellSize 加大
-    const exportCanvas = document.createElement('canvas');
-    drawPatternCanvas(exportCanvas, result.grid, {
+    // 高清导出：cellSize 加大 + 下方色卡清单
+    const exportCanvas = exportPatternWithLegend(result.grid, result.stats, {
       cellSize: Math.max(20, cellSize),
       showGrid: true,
       showChunkLines: true,

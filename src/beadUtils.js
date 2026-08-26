@@ -283,6 +283,93 @@ export function drawWatermark(ctx, width, height, text = '十三工坊 仅供预
   ctx.restore();
 }
 
+// 导出带色卡清单的图纸（下方留白显示颜色+色号+数量）
+export function exportPatternWithLegend(grid, stats, options = {}) {
+  const {
+    cellSize = 20,
+    showGrid = true,
+    showChunkLines = true,
+    showCodes = true,
+    chunkSize = 5,
+  } = options;
+
+  const gridHeight = grid.length;
+  const gridWidth = grid[0]?.length || 0;
+  const patternWidth = gridWidth * cellSize;
+
+  // 色卡区域参数
+  const legendPadding = 20;
+  const legendItemHeight = 24;
+  const legendItemGap = 8;
+  const colorBoxSize = 18;
+  const legendTitleHeight = 28;
+  const legendCols = 2; // 两列显示
+  const colWidth = Math.floor((patternWidth - legendPadding * 2 - 20) / legendCols);
+
+  const legendRows = Math.ceil(stats.length / legendCols);
+  const legendHeight = legendTitleHeight + legendRows * (legendItemHeight + legendItemGap) + legendPadding * 2;
+
+  const canvas = document.createElement('canvas');
+  const totalHeight = gridHeight * cellSize + legendHeight;
+  canvas.width = patternWidth;
+  canvas.height = totalHeight;
+  const ctx = canvas.getContext('2d');
+
+  // 白色背景
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // 先画图
+  const patternCanvas = document.createElement('canvas');
+  drawPatternCanvas(patternCanvas, grid, {
+    cellSize,
+    showGrid,
+    showChunkLines,
+    showCodes,
+    chunkSize,
+  });
+  ctx.drawImage(patternCanvas, 0, 0);
+
+  // 色卡标题
+  const legendY = gridHeight * cellSize;
+  ctx.fillStyle = '#333333';
+  ctx.font = 'bold 14px "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(`颜色清单（共 ${stats.length} 色，${stats.reduce((s, c) => s + c.count, 0)} 颗）`, legendPadding, legendY + legendPadding);
+
+  // 色卡条目
+  ctx.font = '12px "Microsoft YaHei", sans-serif';
+  stats.forEach((stat, idx) => {
+    const col = idx % legendCols;
+    const row = Math.floor(idx / legendCols);
+    const x = legendPadding + col * (colWidth + 20);
+    const y = legendY + legendPadding + legendTitleHeight + row * (legendItemHeight + legendItemGap);
+
+    // 颜色方块
+    ctx.fillStyle = stat.hex;
+    ctx.fillRect(x, y, colorBoxSize, colorBoxSize);
+    ctx.strokeStyle = '#cccccc';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, colorBoxSize - 1, colorBoxSize - 1);
+
+    // 色号 + 名称 + 数量
+    ctx.fillStyle = '#333333';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    const textX = x + colorBoxSize + 8;
+    const textY = y + colorBoxSize / 2;
+    ctx.fillText(`${stat.code}  ${stat.name}`, textX, textY);
+
+    // 数量右对齐
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#666666';
+    ctx.fillText(`${stat.count}颗`, x + colWidth, textY);
+  });
+
+  return canvas;
+}
+
 // 导出 CSV 色卡清单
 export function exportCSV(stats, gridWidth, gridHeight, totalBeads) {
   const header = '色号,颜色名称,数量,HEX';
