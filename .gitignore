@@ -30,3 +30,6 @@ Thumbs.db
 # 备份
 抖音xhs/
 */备份/
+
+# Local Netlify folder
+.netlify
