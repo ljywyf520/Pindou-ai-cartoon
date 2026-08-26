@@ -11,7 +11,7 @@ export default function BeadConverter({ userProfile, onExportUsed, session, pres
   const [result, setResult] = useState(null);
   const [cellSize, setCellSize] = useState(20);
   const [showCodes, setShowCodes] = useState(true);
-  const [ignoreWhiteBg, setIgnoreWhiteBg] = useState(true);
+  const [ignoreWhiteBg, setIgnoreWhiteBg] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
@@ -286,7 +286,12 @@ export default function BeadConverter({ userProfile, onExportUsed, session, pres
               </div>
 
               <div className="param-row">
-                <label>忽略白色背景</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label>忽略白色背景</label>
+                  <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 'normal' }}>
+                    图案内部有白色时建议关闭，避免误删
+                  </span>
+                </div>
                 <label className="switch">
                   <input
                     type="checkbox"
