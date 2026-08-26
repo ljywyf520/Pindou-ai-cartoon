@@ -57,25 +57,43 @@ export function convertImageToBeads(image, gridWidth, options = {}) {
 
   const grid = result.grid;
 
-  // 智能去背景：用原始像素亮度计算图案边界（bounding box）
+  // 智能去背景：用原始图像像素计算图案边界（bounding box）
   // 比 flood fill 更安全，不会误删图案内部的白色
   if (ignoreEdgeWhite) {
     const gridH = grid.length;
     const gridW = grid[0]?.length || 0;
     let minRow = gridH, maxRow = -1, minCol = gridW, maxCol = -1;
 
-    // 用原始像素的亮度来判断是否为图案内容
-    // 纯白色（RGB 都 >= 253）才算背景，其他即使很白也算图案的一部分
-    const isBgPixel = (r, g, b) => r >= 253 && g >= 253 && b >= 253;
+    // 用原始图像数据（锐化前）来判断是否为背景白色
+    // 纯白色（RGB 都 >= 250）才算背景，阈值稍放宽避免 JPG 压缩噪点
+    const rawData = imgData.data;
+    const isBgPixel = (r, g, b) => r >= 250 && g >= 250 && b >= 250;
 
-    // 遍历每个格子，取格子中心像素判断
+    // 遍历每个格子，取格子中心 + 4 个角共 5 个点判断
+    // 只要有一个点不是白色，就认为这个格子属于图案
     for (let r = 0; r < gridH; r++) {
       for (let c = 0; c < gridW; c++) {
-        const px = Math.floor((c + 0.5) * imageWidth / gridW);
-        const py = Math.floor((r + 0.5) * imageHeight / gridH);
-        const idx = (py * imageWidth + px) * 4;
-        const pr = pixels[idx], pg = pixels[idx + 1], pb = pixels[idx + 2];
-        if (!isBgPixel(pr, pg, pb)) {
+        const cellW = imageWidth / gridW;
+        const cellH = imageHeight / gridH;
+        const cx = Math.floor((c + 0.5) * cellW);
+        const cy = Math.floor((r + 0.5) * cellH);
+        // 采样 5 个点：中心 + 四角
+        const samples = [
+          [cx, cy],
+          [Math.floor(c * cellW + 1), Math.floor(r * cellH + 1)],
+          [Math.floor((c + 1) * cellW - 1), Math.floor(r * cellH + 1)],
+          [Math.floor(c * cellW + 1), Math.floor((r + 1) * cellH - 1)],
+          [Math.floor((c + 1) * cellW - 1), Math.floor((r + 1) * cellH - 1)],
+        ];
+        let hasNonBg = false;
+        for (const [sx, sy] of samples) {
+          const idx = (sy * imageWidth + sx) * 4;
+          if (!isBgPixel(rawData[idx], rawData[idx + 1], rawData[idx + 2])) {
+            hasNonBg = true;
+            break;
+          }
+        }
+        if (hasNonBg) {
           if (r < minRow) minRow = r;
           if (r > maxRow) maxRow = r;
           if (c < minCol) minCol = c;
