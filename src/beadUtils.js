@@ -102,21 +102,19 @@ export function convertImageToBeads(image, gridWidth, options = {}) {
       }
     }
 
-    // 边界外扩 1 格，避免边缘被切掉
+    // 边界外的格子标记为外部背景（直接置空，确保画图时跳过）
     if (maxRow >= 0) {
       minRow = Math.max(0, minRow - 1);
       maxRow = Math.min(gridH - 1, maxRow + 1);
       minCol = Math.max(0, minCol - 1);
       maxCol = Math.min(gridW - 1, maxCol + 1);
 
-      // 边界外的格子标记为外部背景
       for (let r = 0; r < gridH; r++) {
         for (let c = 0; c < gridW; c++) {
-          const cell = grid[r][c];
-          if (!cell) continue;
           const isOutside = r < minRow || r > maxRow || c < minCol || c > maxCol;
           if (isOutside) {
-            cell.isExternal = true;
+            // 直接置空，画图时会跳过；同时统计颜色时也不会计入
+            grid[r][c] = null;
           }
         }
       }
@@ -205,7 +203,7 @@ export function drawPatternCanvas(canvas, grid, options = {}) {
   for (let y = 0; y < gridHeight; y++) {
     for (let x = 0; x < gridWidth; x++) {
       const cell = grid[y][x];
-      if (!cell || cell.isExternal) continue;
+      if (!cell) continue;
 
       const hex = cell.hex || '#ffffff';
       ctx.fillStyle = hex;
