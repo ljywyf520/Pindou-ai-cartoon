@@ -118,7 +118,7 @@ http.createServer(async (request, response) => {
     response.end(data);
   });
 }).listen(port, '127.0.0.1', () => {
-  console.log(`豆格工坊已启动：http://127.0.0.1:${port}`);
+  console.log(`十三拼豆坊已启动：http://127.0.0.1:${port}`);
   if (process.env.ARK_API_KEY) {
     console.log('✅ Seedream API 已配置');
   } else {

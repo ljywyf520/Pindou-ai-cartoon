@@ -17,7 +17,7 @@ function drawWatermark(ctx, width, height) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.rotate(-Math.PI / 6);
-  const text = '十三工坊 仅供预览';
+  const text = '十三拼豆坊 仅供预览';
   const spacing = 200;
   for (let y = -height; y < height * 2; y += spacing) {
     for (let x = -width; x < width * 2; x += spacing) {
@@ -31,7 +31,7 @@ function drawWatermark(ctx, width, height) {
   ctx.font = 'bold 18px system-ui, sans-serif';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('十三工坊 仅供预览', width - 12, height - 12);
+  ctx.fillText('十三拼豆坊 仅供预览', width - 12, height - 12);
   ctx.restore();
 }
 

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { convertImageToBeads, drawPatternCanvas, drawWatermark, exportCSV, exportPatternWithLegend } from './beadUtils.js';
 
 const DEFAULT_GRID_WIDTH = 48;
-const WATERMARK_TEXT = '十三工坊 仅供预览';
+const WATERMARK_TEXT = '十三拼豆坊 仅供预览';
 
 export default function BeadConverter({ userProfile, onExportUsed, session, presetImage }) {
   const [image, setImage] = useState(null);

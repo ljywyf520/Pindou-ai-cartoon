@@ -333,7 +333,7 @@ function getContrastColor(hex) {
 }
 
 // 绘制水印
-export function drawWatermark(ctx, width, height, text = '十三工坊 仅供预览') {
+export function drawWatermark(ctx, width, height, text = '十三拼豆坊 仅供预览') {
   ctx.save();
   ctx.globalAlpha = 0.08;
   ctx.fillStyle = '#222222';

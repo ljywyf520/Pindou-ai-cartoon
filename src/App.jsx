@@ -259,7 +259,7 @@ function App() {
             <i />
           </span>
           <div>
-            <div className="brand-title">豆格工坊</div>
+            <div className="brand-title">十三拼豆坊</div>
             <div className="brand-subtitle">拼豆图纸转换器</div>
           </div>
         </div>
@@ -373,7 +373,7 @@ function AuthView({ mode, setMode, form, setForm, onSubmit, status, busy }) {
   return (
     <div className="auth-layout">
       <section className="hero">
-        <p className="eyebrow">豆格工坊</p>
+        <p className="eyebrow">十三拼豆坊</p>
         <h1>把照片变成拼豆图纸</h1>
         <p className="hero-copy">
           上传照片，一键生成可直接制作的拼豆图纸。支持自定义尺寸、5×5 分块、色号标注。

@@ -137,7 +137,7 @@ if (cleanPath === 'api/seedream' && request.method === 'POST') {
 
 #### 方式 A：改启动脚本（推荐）
 
-修改 `启动豆格工坊.bat`，加一行环境变量：
+修改启动脚本，加一行环境变量：
 
 ```batch
 @echo off
