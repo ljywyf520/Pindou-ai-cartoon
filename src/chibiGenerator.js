@@ -286,7 +286,7 @@ export async function generateChibi(image, options = {}) {
   }
 
   try {
-    const response = await fetch('/.netlify/functions/seedream', {
+    const response = await fetch('/api/seedream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),
