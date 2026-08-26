@@ -25,6 +25,7 @@ const USER_QUERY = /* GraphQL */ `
       remaining_export_count
       remaining_ai_count
       membership_status
+      is_disabled
     }
   }
 `;
@@ -37,6 +38,7 @@ const USER_BY_ID_QUERY = /* GraphQL */ `
       remaining_export_count
       remaining_ai_count
       membership_status
+      is_disabled
     }
   }
 `;
@@ -49,6 +51,7 @@ const USER_INSERT = /* GraphQL */ `
         remaining_export_count: 0
         remaining_ai_count: 0
         membership_status: $membershipStatus
+        is_disabled: false
       }
     ) {
       id
@@ -56,6 +59,7 @@ const USER_INSERT = /* GraphQL */ `
       remaining_export_count
       remaining_ai_count
       membership_status
+      is_disabled
     }
   }
 `;
@@ -70,6 +74,7 @@ const DECREMENT_EXPORT = /* GraphQL */ `
       remaining_export_count
       remaining_ai_count
       membership_status
+      is_disabled
     }
   }
 `;
@@ -84,6 +89,7 @@ const DECREMENT_AI = /* GraphQL */ `
       remaining_export_count
       remaining_ai_count
       membership_status
+      is_disabled
     }
   }
 `;
@@ -124,6 +130,7 @@ const ADD_USER_BENEFITS = /* GraphQL */ `
       remaining_export_count
       remaining_ai_count
       membership_status
+      is_disabled
     }
   }
 `;
@@ -245,6 +252,7 @@ const ADMIN_USER_LIST = /* GraphQL */ `
       remaining_export_count
       remaining_ai_count
       membership_status
+      is_disabled
     }
   }
 `;
@@ -281,6 +289,47 @@ const ADMIN_CREATE_REDEEM = /* GraphQL */ `
       export_count
       ai_count
       status
+    }
+  }
+`;
+
+// 管理员：调整用户次数
+const ADMIN_UPDATE_COUNTS = /* GraphQL */ `
+  mutation AdminUpdateCounts($userId: ID!, $exportDelta: bigint!, $aiDelta: bigint!) {
+    update_user_by_pk(
+      pk_columns: { id: $userId }
+      _inc: { remaining_export_count: $exportDelta, remaining_ai_count: $aiDelta }
+    ) {
+      id
+      remaining_export_count
+      remaining_ai_count
+      membership_status
+    }
+  }
+`;
+
+// 管理员：设置用户会员状态
+const ADMIN_SET_MEMBERSHIP = /* GraphQL */ `
+  mutation AdminSetMembership($userId: ID!, $status: String!) {
+    update_user_by_pk(
+      pk_columns: { id: $userId }
+      _set: { membership_status: $status }
+    ) {
+      id
+      membership_status
+    }
+  }
+`;
+
+// 管理员：禁用/启用账号
+const ADMIN_SET_DISABLED = /* GraphQL */ `
+  mutation AdminSetDisabled($userId: ID!, $disabled: Boolean!) {
+    update_user_by_pk(
+      pk_columns: { id: $userId }
+      _set: { is_disabled: $disabled }
+    ) {
+      id
+      is_disabled
     }
   }
 `;
@@ -323,4 +372,51 @@ export async function adminCreateRedeemCode(token, { code, type, exportCount, ai
     aiCount,
   }, token);
   return data.insert_redeem_code_one;
+}
+
+// 管理员：调整用户次数（正数增加，负数减少）
+export async function adminUpdateUserCounts(token, userId, exportDelta, aiDelta) {
+  const data = await request(ADMIN_UPDATE_COUNTS, {
+    userId,
+    exportDelta,
+    aiDelta,
+  }, token);
+  return data.update_user_by_pk;
+}
+
+// 管理员：设置用户会员状态
+export async function adminSetMembership(token, userId, status) {
+  const data = await request(ADMIN_SET_MEMBERSHIP, {
+    userId,
+    status,
+  }, token);
+  return data.update_user_by_pk;
+}
+
+// 管理员：禁用/启用账号
+export async function adminSetDisabled(token, userId, disabled) {
+  const data = await request(ADMIN_SET_DISABLED, {
+    userId,
+    disabled,
+  }, token);
+  return data.update_user_by_pk;
+}
+
+// 管理员：重置密码（通过 Zion 认证系统）
+export async function adminResetPassword(token, username, newPassword) {
+  // Zion 的 resetPassword 接口
+  const mutation = /* GraphQL */ `
+    mutation ResetPassword($username: String!, $password: String!) {
+      resetPassword(username: $username, password: $password) {
+        success
+      }
+    }
+  `;
+  try {
+    const data = await request(mutation, { username, password: newPassword }, token);
+    return data.resetPassword?.success ?? true;
+  } catch (e) {
+    // 如果 Zion 不支持 admin 重置密码，抛出友好提示
+    throw new Error('Zion 暂不支持管理员重置密码，请用户自行在登录页找回密码');
+  }
 }

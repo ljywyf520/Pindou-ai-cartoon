@@ -85,6 +85,17 @@ function App() {
       try {
         const currentProfile = await hydrateSession(stored.username, stored.token);
         if (!active) return;
+        // 检查账号是否被禁用
+        if (currentProfile && currentProfile.is_disabled) {
+          clearStoredSession();
+          setSession(null);
+          setProfile(null);
+          setStatus({
+            kind: 'error',
+            text: '该账号已被禁用，请联系管理员。',
+          });
+          return;
+        }
         setSession(stored);
         setAccount(stored.account || null);
         setProfile(currentProfile);
@@ -146,6 +157,11 @@ function App() {
       const account = result.authenticateWithUsername.account;
       const currentUsername = account.username || username;
       const currentProfile = await hydrateSession(currentUsername, token);
+
+      // 检查账号是否被禁用
+      if (currentProfile && currentProfile.is_disabled) {
+        throw new Error('该账号已被禁用，请联系管理员。');
+      }
 
       const nextSession = { token, username: currentUsername, account };
       saveStoredSession(nextSession);
