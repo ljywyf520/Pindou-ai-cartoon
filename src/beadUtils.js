@@ -42,14 +42,14 @@ export function convertImageToBeads(image, gridWidth, options = {}) {
     { denoise: false, sharpen: true }
   );
 
-  // 使用 bead-core-main 的专业管线（和原始版本完全一致的参数）
-  // 注意：backgroundPaletteIds 传空，不用内置的 flood fill（容易误删内部白色）
+  // 使用 bead-core-main 的内置 flood fill 去背景
+  // backgroundPaletteIds: 白色背景色的色板 ID
   const result = runPipeline(pixels, imageWidth, imageHeight, {
     gridWidth,
     mode: 'average',
     mergeThreshold,
     maxColors: 0,
-    backgroundPaletteIds: [],
+    backgroundPaletteIds: ignoreEdgeWhite ? ['H2'] : [],
     excludedPaletteIds: [],
     palette,
     flatTile: false,
@@ -57,69 +57,10 @@ export function convertImageToBeads(image, gridWidth, options = {}) {
 
   const grid = result.grid;
 
-  // 智能去背景：用原始图像像素计算图案边界（bounding box）
-  // 比 flood fill 更安全，不会误删图案内部的白色
-  if (ignoreEdgeWhite) {
-    const gridH = grid.length;
-    const gridW = grid[0]?.length || 0;
-    let minRow = gridH, maxRow = -1, minCol = gridW, maxCol = -1;
-
-    // 用原始图像数据（锐化前）来判断
-    // 阈值放宽到 240，避免 JPG 压缩导致白色背景偏灰被误判为内容
-    const rawData = imgData.data;
-    const isWhite = (r, g, b) => r >= 240 && g >= 240 && b >= 240;
-
-    // 每个格子均匀采样 9 个点
-    // 白色点占比 >= 70% 才认为是背景格子，否则算图案内容
-    for (let r = 0; r < gridH; r++) {
-      for (let c = 0; c < gridW; c++) {
-        const cellW = imageWidth / gridW;
-        const cellH = imageHeight / gridH;
-        const samples = [];
-        for (let dy = 0; dy < 3; dy++) {
-          for (let dx = 0; dx < 3; dx++) {
-            const sx = Math.floor(c * cellW + cellW * (dx + 0.5) / 3);
-            const sy = Math.floor(r * cellH + cellH * (dy + 0.5) / 3);
-            samples.push([sx, sy]);
-          }
-        }
-        let whiteCount = 0;
-        for (const [sx, sy] of samples) {
-          const idx = (sy * imageWidth + sx) * 4;
-          if (isWhite(rawData[idx], rawData[idx + 1], rawData[idx + 2])) {
-            whiteCount++;
-          }
-        }
-        // 白色点少于 70% = 这个格子有图案内容
-        if (whiteCount / samples.length < 0.7) {
-          if (r < minRow) minRow = r;
-          if (r > maxRow) maxRow = r;
-          if (c < minCol) minCol = c;
-          if (c > maxCol) maxCol = c;
-        }
-      }
-    }
-
-    // 边界外的格子直接置空（背景）
-    if (maxRow >= 0) {
-      minRow = Math.max(0, minRow - 1);
-      maxRow = Math.min(gridH - 1, maxRow + 1);
-      minCol = Math.max(0, minCol - 1);
-      maxCol = Math.min(gridW - 1, maxCol + 1);
-
-      for (let r = 0; r < gridH; r++) {
-        for (let c = 0; c < gridW; c++) {
-          const isOutside = r < minRow || r > maxRow || c < minCol || c > maxCol;
-          if (isOutside) {
-            grid[r][c] = null;
-          }
-        }
-      }
-    }
-  }
-
   // 填补空单元格：未匹配到色板的格子自动匹配最近色（Q版/浅色区域缺色修复）
+  // 注意：白色背景（H2）被去背景后会变成 null，这些不填补，保持空白
   let fixedCount = 0;
+  const bgColorHex = '#FFFFFD'; // H2 白色背景色
   for (let r = 0; r < grid.length; r++) {
     for (let c = 0; c < grid[r].length; c++) {
       const cell = grid[r][c];
@@ -128,6 +69,8 @@ export function convertImageToBeads(image, gridWidth, options = {}) {
         const py = Math.floor(r * imageHeight / grid.length);
         const idx = (py * imageWidth + px) * 4;
         const r1 = pixels[idx], g1 = pixels[idx + 1], b1 = pixels[idx + 2];
+        // 如果原始像素接近白色（是背景），不填补，保持为空
+        if (r1 >= 250 && g1 >= 250 && b1 >= 250) continue;
         let bestId = null, bestHex = null, bestDist = Infinity;
         for (let p = 0; p < palette.length; p++) {
           const hex = palette[p].hex;
