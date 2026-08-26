@@ -57,17 +57,25 @@ export function convertImageToBeads(image, gridWidth, options = {}) {
 
   const grid = result.grid;
 
-  // 智能去背景：用 bounding box 方式（只删除图案边界外的格子）
+  // 智能去背景：用原始像素亮度计算图案边界（bounding box）
   // 比 flood fill 更安全，不会误删图案内部的白色
   if (ignoreEdgeWhite) {
-    const bgSet = new Set(backgroundPaletteIds);
-    let minRow = grid.length, maxRow = -1, minCol = grid[0].length, maxCol = -1;
+    const gridH = grid.length;
+    const gridW = grid[0]?.length || 0;
+    let minRow = gridH, maxRow = -1, minCol = gridW, maxCol = -1;
 
-    // 找到所有非背景色格子的边界
-    for (let r = 0; r < grid.length; r++) {
-      for (let c = 0; c < grid[r].length; c++) {
-        const cell = grid[r][c];
-        if (cell && cell.paletteId && !bgSet.has(cell.paletteId)) {
+    // 用原始像素的亮度来判断是否为图案内容
+    // 纯白色（RGB 都 >= 253）才算背景，其他即使很白也算图案的一部分
+    const isBgPixel = (r, g, b) => r >= 253 && g >= 253 && b >= 253;
+
+    // 遍历每个格子，取格子中心像素判断
+    for (let r = 0; r < gridH; r++) {
+      for (let c = 0; c < gridW; c++) {
+        const px = Math.floor((c + 0.5) * imageWidth / gridW);
+        const py = Math.floor((r + 0.5) * imageHeight / gridH);
+        const idx = (py * imageWidth + px) * 4;
+        const pr = pixels[idx], pg = pixels[idx + 1], pb = pixels[idx + 2];
+        if (!isBgPixel(pr, pg, pb)) {
           if (r < minRow) minRow = r;
           if (r > maxRow) maxRow = r;
           if (c < minCol) minCol = c;
@@ -76,14 +84,20 @@ export function convertImageToBeads(image, gridWidth, options = {}) {
       }
     }
 
-    // 边界外的格子标记为外部背景
+    // 边界外扩 1 格，避免边缘被切掉
     if (maxRow >= 0) {
-      for (let r = 0; r < grid.length; r++) {
-        for (let c = 0; c < grid[r].length; c++) {
+      minRow = Math.max(0, minRow - 1);
+      maxRow = Math.min(gridH - 1, maxRow + 1);
+      minCol = Math.max(0, minCol - 1);
+      maxCol = Math.min(gridW - 1, maxCol + 1);
+
+      // 边界外的格子标记为外部背景
+      for (let r = 0; r < gridH; r++) {
+        for (let c = 0; c < gridW; c++) {
           const cell = grid[r][c];
           if (!cell) continue;
           const isOutside = r < minRow || r > maxRow || c < minCol || c > maxCol;
-          if (isOutside && bgSet.has(cell.paletteId)) {
+          if (isOutside) {
             cell.isExternal = true;
           }
         }

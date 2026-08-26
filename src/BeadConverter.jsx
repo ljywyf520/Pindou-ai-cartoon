@@ -11,7 +11,7 @@ export default function BeadConverter({ userProfile, onExportUsed, session, pres
   const [result, setResult] = useState(null);
   const [cellSize, setCellSize] = useState(20);
   const [showCodes, setShowCodes] = useState(true);
-  const [ignoreWhiteBg, setIgnoreWhiteBg] = useState(false);
+  const [ignoreWhiteBg, setIgnoreWhiteBg] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
