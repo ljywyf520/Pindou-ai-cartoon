@@ -119,6 +119,19 @@ const MARK_CODE_USED = /* GraphQL */ `
   }
 `;
 
+// 回滚兑换码状态（加次数失败时用）
+const ROLLBACK_CODE = /* GraphQL */ `
+  mutation RollbackCode($codeId: bigint!) {
+    update_redeem_code_by_pk(
+      pk_columns: { id: $codeId }
+      _set: { status: "active", used_at: null }
+    ) {
+      id
+      status
+    }
+  }
+`;
+
 const ADD_USER_BENEFITS = /* GraphQL */ `
   mutation AddUserBenefits($userId: bigint!, $exportDelta: bigint!, $aiDelta: bigint!) {
     update_user_by_pk(
@@ -225,33 +238,49 @@ export async function redeemCode(code, userId, token) {
     throw new Error('该兑换码已使用。');
   }
 
-  // 2. 给用户加次数（bigint 转数字）
-  const exportDelta = parseInt(redeemCode.export_count) || 0;
-  const aiDelta = parseInt(redeemCode.ai_count) || 0;
-
-  const userData = await request(ADD_USER_BENEFITS, {
-    userId,
-    exportDelta,
-    aiDelta,
-  }, token);
-
-  let result = userData.update_user_by_pk;
-
-  // 3. 如果是永久会员码，升级会员
-  if (redeemCode.type === 'permanent') {
-    const memData = await request(SET_MEMBERSHIP, {
-      userId,
-      status: 'permanent',
-    }, token);
-    result = { ...result, membership_status: memData.update_user_by_pk.membership_status };
-  }
-
-  // 4. 标记兑换码已使用
+  // 2. 先标记兑换码已使用（防止重复兑换）
   try {
     await request(MARK_CODE_USED, { codeId: redeemCode.id, usedAt: new Date().toISOString() }, token);
   } catch (e) {
     console.warn('标记兑换码已使用失败', e);
     throw new Error('兑换失败：无法标记已使用，请联系管理员。');
+  }
+
+  // 3. 给用户加次数（bigint 转数字）
+  const exportDelta = parseInt(redeemCode.export_count) || 0;
+  const aiDelta = parseInt(redeemCode.ai_count) || 0;
+
+  let result;
+  try {
+    const userData = await request(ADD_USER_BENEFITS, {
+      userId,
+      exportDelta,
+      aiDelta,
+    }, token);
+    result = userData.update_user_by_pk;
+  } catch (e) {
+    // 加次数失败，尝试回滚兑换码状态（尽力而为）
+    console.warn('加次数失败，尝试回滚兑换码状态', e);
+    try {
+      await request(ROLLBACK_CODE, { codeId: redeemCode.id }, token);
+    } catch (rollbackErr) {
+      console.warn('回滚兑换码也失败了', rollbackErr);
+    }
+    throw new Error('兑换失败：次数充值失败，请稍后重试。');
+  }
+
+  // 4. 如果是永久会员码，升级会员
+  if (redeemCode.type === 'permanent') {
+    try {
+      const memData = await request(SET_MEMBERSHIP, {
+        userId,
+        status: 'permanent',
+      }, token);
+      result = { ...result, membership_status: memData.update_user_by_pk.membership_status };
+    } catch (e) {
+      console.warn('升级会员失败', e);
+      // 会员升级失败不影响次数到账
+    }
   }
 
   return result;
