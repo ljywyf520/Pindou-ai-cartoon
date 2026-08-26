@@ -74,7 +74,7 @@ export default function BeadConverter({ userProfile, onExportUsed, session, pres
     } finally {
       setIsGenerating(false);
     }
-  }, [image, gridWidth]);
+  }, [image, gridWidth, ignoreWhiteBg]);
 
   // 图片加载后自动生成
   useEffect(() => {
