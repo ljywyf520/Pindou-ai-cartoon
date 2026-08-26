@@ -108,10 +108,10 @@ const REDEEM_CODE_QUERY = /* GraphQL */ `
 `;
 
 const MARK_CODE_USED = /* GraphQL */ `
-  mutation MarkCodeUsed($codeId: bigint!, $userId: bigint!) {
+  mutation MarkCodeUsed($codeId: bigint!) {
     update_redeem_code_by_pk(
       pk_columns: { id: $codeId }
-      _set: { status: "used", used_by_id: $userId, used_at: "now" }
+      _set: { status: "used", used_at: "now" }
     ) {
       id
       status
@@ -248,9 +248,10 @@ export async function redeemCode(code, userId, token) {
 
   // 4. 标记兑换码已使用
   try {
-    await request(MARK_CODE_USED, { codeId: redeemCode.id, userId }, token);
+    await request(MARK_CODE_USED, { codeId: redeemCode.id }, token);
   } catch (e) {
     console.warn('标记兑换码已使用失败', e);
+    throw new Error('兑换失败：无法标记已使用，请联系管理员。');
   }
 
   return result;
