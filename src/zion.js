@@ -31,7 +31,7 @@ const USER_QUERY = /* GraphQL */ `
 `;
 
 const USER_BY_ID_QUERY = /* GraphQL */ `
-  query UserById($id: ID!) {
+  query UserById($id: bigint!) {
     user_by_pk(id: $id) {
       id
       username
@@ -65,7 +65,7 @@ const USER_INSERT = /* GraphQL */ `
 `;
 
 const DECREMENT_EXPORT = /* GraphQL */ `
-  mutation DecrementExportCount($id: ID!) {
+  mutation DecrementExportCount($id: bigint!) {
     update_user_by_pk(
       pk_columns: { id: $id }
       _inc: { remaining_export_count: -1 }
@@ -80,7 +80,7 @@ const DECREMENT_EXPORT = /* GraphQL */ `
 `;
 
 const DECREMENT_AI = /* GraphQL */ `
-  mutation DecrementAiCount($id: ID!) {
+  mutation DecrementAiCount($id: bigint!) {
     update_user_by_pk(
       pk_columns: { id: $id }
       _inc: { remaining_ai_count: -1 }
@@ -108,7 +108,7 @@ const REDEEM_CODE_QUERY = /* GraphQL */ `
 `;
 
 const MARK_CODE_USED = /* GraphQL */ `
-  mutation MarkCodeUsed($codeId: bigint!, $userId: ID!) {
+  mutation MarkCodeUsed($codeId: bigint!, $userId: bigint!) {
     update_redeem_code_by_pk(
       pk_columns: { id: $codeId }
       _set: { status: "used", used_by_id: $userId, used_at: "now" }
@@ -120,7 +120,7 @@ const MARK_CODE_USED = /* GraphQL */ `
 `;
 
 const ADD_USER_BENEFITS = /* GraphQL */ `
-  mutation AddUserBenefits($userId: ID!, $exportDelta: bigint!, $aiDelta: bigint!) {
+  mutation AddUserBenefits($userId: bigint!, $exportDelta: bigint!, $aiDelta: bigint!) {
     update_user_by_pk(
       pk_columns: { id: $userId }
       _inc: { remaining_export_count: $exportDelta, remaining_ai_count: $aiDelta }
@@ -135,7 +135,7 @@ const ADD_USER_BENEFITS = /* GraphQL */ `
 `;
 
 const SET_MEMBERSHIP = /* GraphQL */ `
-  mutation SetMembership($userId: ID!, $status: String!) {
+  mutation SetMembership($userId: bigint!, $status: String!) {
     update_user_by_pk(
       pk_columns: { id: $userId }
       _set: { membership_status: $status }
@@ -311,7 +311,7 @@ const ADMIN_CREATE_REDEEM = /* GraphQL */ `
 
 // 管理员：调整用户次数
 const ADMIN_UPDATE_COUNTS = /* GraphQL */ `
-  mutation AdminUpdateCounts($userId: ID!, $exportDelta: bigint!, $aiDelta: bigint!) {
+  mutation AdminUpdateCounts($userId: bigint!, $exportDelta: bigint!, $aiDelta: bigint!) {
     update_user_by_pk(
       pk_columns: { id: $userId }
       _inc: { remaining_export_count: $exportDelta, remaining_ai_count: $aiDelta }
@@ -326,7 +326,7 @@ const ADMIN_UPDATE_COUNTS = /* GraphQL */ `
 
 // 管理员：设置用户会员状态
 const ADMIN_SET_MEMBERSHIP = /* GraphQL */ `
-  mutation AdminSetMembership($userId: ID!, $status: String!) {
+  mutation AdminSetMembership($userId: bigint!, $status: String!) {
     update_user_by_pk(
       pk_columns: { id: $userId }
       _set: { membership_status: $status }
@@ -339,7 +339,7 @@ const ADMIN_SET_MEMBERSHIP = /* GraphQL */ `
 
 // 管理员：禁用/启用账号
 const ADMIN_SET_DISABLED = /* GraphQL */ `
-  mutation AdminSetDisabled($userId: ID!, $disabled: Boolean!) {
+  mutation AdminSetDisabled($userId: bigint!, $disabled: Boolean!) {
     update_user_by_pk(
       pk_columns: { id: $userId }
       _set: { is_disabled: $disabled }
