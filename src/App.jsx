@@ -530,6 +530,25 @@ function RedeemView({ onRedeem, profile }) {
           </div>
         </div>
 
+        {profile && (
+          <div className="metric-grid" style={{ marginBottom: '20px' }}>
+            <div className="metric">
+              <span>剩余导出</span>
+              <strong>{profile.remaining_export_count ?? 0}</strong>
+            </div>
+            <div className="metric">
+              <span>AI 生图</span>
+              <strong>{profile.remaining_ai_count ?? 0}</strong>
+            </div>
+            <div className="metric">
+              <span>会员状态</span>
+              <strong style={{ fontSize: '14px' }}>
+                {profile.membership_status === 'permanent' ? '永久会员' : '免费用户'}
+              </strong>
+            </div>
+          </div>
+        )}
+
         <form className="form" onSubmit={handleSubmit}>
           <label className="field">
             <span>兑换码</span>

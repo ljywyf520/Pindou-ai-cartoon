@@ -120,17 +120,28 @@ const MARK_CODE_USED = /* GraphQL */ `
 `;
 
 const ADD_USER_BENEFITS = /* GraphQL */ `
-  mutation AddUserBenefits($userId: ID!, $exportDelta: bigint!, $aiDelta: bigint!, $membership: String) {
+  mutation AddUserBenefits($userId: ID!, $exportDelta: bigint!, $aiDelta: bigint!) {
     update_user_by_pk(
       pk_columns: { id: $userId }
       _inc: { remaining_export_count: $exportDelta, remaining_ai_count: $aiDelta }
-      _set: { membership_status: $membership }
     ) {
       id
       remaining_export_count
       remaining_ai_count
       membership_status
       is_disabled
+    }
+  }
+`;
+
+const SET_MEMBERSHIP = /* GraphQL */ `
+  mutation SetMembership($userId: ID!, $status: String!) {
+    update_user_by_pk(
+      pk_columns: { id: $userId }
+      _set: { membership_status: $status }
+    ) {
+      id
+      membership_status
     }
   }
 `;
@@ -214,30 +225,35 @@ export async function redeemCode(code, userId, token) {
     throw new Error('该兑换码已使用。');
   }
 
-  // 2. 给用户加权益
-  const exportDelta = redeemCode.export_count || 0;
-  const aiDelta = redeemCode.ai_count || 0;
-  let membership = undefined;
-
-  if (redeemCode.type === 'permanent') {
-    membership = 'permanent';
-  }
+  // 2. 给用户加次数（bigint 转数字）
+  const exportDelta = parseInt(redeemCode.export_count) || 0;
+  const aiDelta = parseInt(redeemCode.ai_count) || 0;
 
   const userData = await request(ADD_USER_BENEFITS, {
     userId,
     exportDelta,
     aiDelta,
-    membership,
   }, token);
 
-  // 3. 标记兑换码已使用
+  let result = userData.update_user_by_pk;
+
+  // 3. 如果是永久会员码，升级会员
+  if (redeemCode.type === 'permanent') {
+    const memData = await request(SET_MEMBERSHIP, {
+      userId,
+      status: 'permanent',
+    }, token);
+    result = { ...result, membership_status: memData.update_user_by_pk.membership_status };
+  }
+
+  // 4. 标记兑换码已使用
   try {
     await request(MARK_CODE_USED, { codeId: redeemCode.id, userId }, token);
   } catch (e) {
     console.warn('标记兑换码已使用失败', e);
   }
 
-  return userData.update_user_by_pk;
+  return result;
 }
 
 // ============================================================
