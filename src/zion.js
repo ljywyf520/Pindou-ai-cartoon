@@ -310,6 +310,76 @@ const ADMIN_CREATE_REDEEM = /* GraphQL */ `
   }
 `;
 
+// 管理员：批量创建兑换码
+const ADMIN_BATCH_CREATE_REDEEM = /* GraphQL */ `
+  mutation AdminBatchCreateRedeem($objects: [redeem_code_insert_input!]!) {
+    insert_redeem_code(objects: $objects) {
+      returning {
+        id
+        code
+        type
+        export_count
+        ai_count
+        status
+      }
+    }
+  }
+`;
+
+// 管理员：更新兑换码
+const ADMIN_UPDATE_REDEEM = /* GraphQL */ `
+  mutation AdminUpdateRedeem($id: bigint!, $type: String!, $exportCount: bigint!, $aiCount: bigint!) {
+    update_redeem_code_by_pk(
+      pk_columns: { id: $id }
+      _set: { type: $type, export_count: $exportCount, ai_count: $aiCount }
+    ) {
+      id
+      code
+      type
+      export_count
+      ai_count
+      status
+    }
+  }
+`;
+
+// 管理员：删除兑换码
+const ADMIN_DELETE_REDEEM = /* GraphQL */ `
+  mutation AdminDeleteRedeem($id: bigint!) {
+    delete_redeem_code_by_pk(id: $id) {
+      id
+      code
+    }
+  }
+`;
+
+// 管理员：搜索+筛选兑换码
+const ADMIN_SEARCH_REDEEM = /* GraphQL */ `
+  query AdminSearchRedeem($code: String, $type: String, $status: String, $limit: Int!, $offset: Int!) {
+    redeem_code(
+      order_by: { id: desc }
+      limit: $limit
+      offset: $offset
+      where: {
+        _and: [
+          $code ? { code: { _ilike: $code } } : {}
+          $type ? { type: { _eq: $type } } : {}
+          $status ? { status: { _eq: $status } } : {}
+        ]
+      }
+    ) {
+      id
+      code
+      type
+      export_count
+      ai_count
+      status
+      used_by_id
+      used_at
+    }
+  }
+`;
+
 // 管理员：调整用户次数
 const ADMIN_UPDATE_COUNTS = /* GraphQL */ `
   mutation AdminUpdateCounts($userId: bigint!, $exportDelta: bigint!, $aiDelta: bigint!) {
@@ -389,6 +459,62 @@ export async function adminCreateRedeemCode(token, { code, type, exportCount, ai
     aiCount,
   }, token);
   return data.insert_redeem_code_one;
+}
+
+// 管理员：批量创建兑换码
+export async function adminBatchCreateRedeemCodes(token, { count, type, exportCount, aiCount }) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const objects = [];
+  for (let i = 0; i < count; i++) {
+    let code = 'PIDOU-';
+    for (let j = 0; j < 4; j++) code += chars[Math.floor(Math.random() * chars.length)];
+    code += '-';
+    for (let j = 0; j < 4; j++) code += chars[Math.floor(Math.random() * chars.length)];
+    code += '-';
+    for (let j = 0; j < 4; j++) code += chars[Math.floor(Math.random() * chars.length)];
+    objects.push({
+      code,
+      type,
+      export_count: exportCount,
+      ai_count: aiCount,
+      status: 'active',
+    });
+  }
+  const data = await request(ADMIN_BATCH_CREATE_REDEEM, { objects }, token);
+  return data.insert_redeem_code?.returning || [];
+}
+
+// 管理员：更新兑换码
+export async function adminUpdateRedeemCode(token, { id, type, exportCount, aiCount }) {
+  const data = await request(ADMIN_UPDATE_REDEEM, {
+    id,
+    type,
+    exportCount,
+    aiCount,
+  }, token);
+  return data.update_redeem_code_by_pk;
+}
+
+// 管理员：删除兑换码
+export async function adminDeleteRedeemCode(token, id) {
+  const data = await request(ADMIN_DELETE_REDEEM, { id }, token);
+  return data.delete_redeem_code_by_pk;
+}
+
+// 管理员：搜索筛选兑换码
+export async function adminSearchRedeemCodes(token, { keyword, typeFilter, statusFilter, limit = 50, offset = 0 }) {
+  const variables = {
+    code: keyword ? `%${keyword}%` : null,
+    type: typeFilter && typeFilter !== 'all' ? typeFilter : null,
+    status: statusFilter && statusFilter !== 'all' ? statusFilter : null,
+    limit,
+    offset,
+  };
+  const data = await request(ADMIN_SEARCH_REDEEM, variables, token);
+  return {
+    codes: data.redeem_code || [],
+    total: (data.redeem_code || []).length,
+  };
 }
 
 // 管理员：调整用户次数（正数增加，负数减少）

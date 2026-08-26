@@ -7,6 +7,10 @@ import {
   adminSetMembership,
   adminSetDisabled,
   adminResetPassword,
+  adminBatchCreateRedeemCodes,
+  adminUpdateRedeemCode,
+  adminDeleteRedeemCode,
+  adminSearchRedeemCodes,
 } from './zion.js';
 
 export default function AdminPanel({ session }) {
@@ -26,9 +30,30 @@ export default function AdminPanel({ session }) {
   const [createMsg, setCreateMsg] = useState(null);
   const [creating, setCreating] = useState(false);
 
+  // 搜索筛选
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  // 批量生成
+  const [batchCount, setBatchCount] = useState(10);
+  const [batchType, setBatchType] = useState('normal');
+  const [batchExport, setBatchExport] = useState(10);
+  const [batchAi, setBatchAi] = useState(3);
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
+  const [batchResult, setBatchResult] = useState([]);
+  const [batchLoading, setBatchLoading] = useState(false);
+
+  // 编辑兑换码
+  const [editCode, setEditCode] = useState(null);
+  const [editType, setEditType] = useState('normal');
+  const [editExport, setEditExport] = useState(0);
+  const [editAi, setEditAi] = useState(0);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editMsg, setEditMsg] = useState(null);
+
   // 用户操作弹窗
   const [actionModal, setActionModal] = useState(null);
-  // { type: 'counts'|'membership'|'password'|'disable', user: {...} }
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMsg, setActionMsg] = useState(null);
 
@@ -58,9 +83,19 @@ export default function AdminPanel({ session }) {
     setLoading(true);
     setLoadError(null);
     try {
-      const res = await adminListRedeemCodes(session.token, 50, 0);
-      setCodes(res.codes);
-      setCodeTotal(res.total);
+      if (searchKeyword || typeFilter !== 'all' || statusFilter !== 'all') {
+        const res = await adminSearchRedeemCodes(session.token, {
+          keyword: searchKeyword,
+          typeFilter,
+          statusFilter,
+        });
+        setCodes(res.codes);
+        setCodeTotal(res.total);
+      } else {
+        const res = await adminListRedeemCodes(session.token, 50, 0);
+        setCodes(res.codes);
+        setCodeTotal(res.total);
+      }
     } catch (e) {
       console.error('加载兑换码列表失败', e);
       setLoadError(e.message || '加载失败');
@@ -113,8 +148,79 @@ export default function AdminPanel({ session }) {
     }
   };
 
+  const handleBatchCreate = async () => {
+    if (batchCount < 1 || batchCount > 100) {
+      return;
+    }
+    setBatchLoading(true);
+    setBatchResult([]);
+    try {
+      const result = await adminBatchCreateRedeemCodes(session.token, {
+        count: parseInt(batchCount),
+        type: batchType,
+        exportCount: parseInt(batchExport) || 0,
+        aiCount: parseInt(batchAi) || 0,
+      });
+      setBatchResult(result);
+      loadCodes();
+    } catch (err) {
+      alert(err.message || '批量生成失败');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    loadCodes();
+  };
+
+  const openEditModal = (code) => {
+    setEditCode(code);
+    setEditType(code.type);
+    setEditExport(parseInt(code.export_count) || 0);
+    setEditAi(parseInt(code.ai_count) || 0);
+    setEditMsg(null);
+  };
+
+  const handleUpdateCode = async () => {
+    if (!editCode) return;
+    setEditLoading(true);
+    setEditMsg(null);
+    try {
+      await adminUpdateRedeemCode(session.token, {
+        id: editCode.id,
+        type: editType,
+        exportCount: parseInt(editExport) || 0,
+        aiCount: parseInt(editAi) || 0,
+      });
+      setEditMsg({ kind: 'success', text: '更新成功！' });
+      loadCodes();
+    } catch (err) {
+      setEditMsg({ kind: 'error', text: err.message || '更新失败' });
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleDeleteCode = async (code) => {
+    if (!confirm(`确定要删除兑换码 ${code.code} 吗？`)) return;
+    try {
+      await adminDeleteRedeemCode(session.token, code.id);
+      loadCodes();
+    } catch (err) {
+      alert(err.message || '删除失败');
+    }
+  };
+
   const copyCode = (code) => {
     navigator.clipboard.writeText(code);
+  };
+
+  const copyAllBatchCodes = () => {
+    const all = batchResult.map(c => c.code).join('\n');
+    navigator.clipboard.writeText(all);
+    alert('已复制到剪贴板');
   };
 
   const openModal = (type, user) => {
@@ -178,7 +284,6 @@ export default function AdminPanel({ session }) {
       await adminSetDisabled(session.token, actionModal.user.id, willDisable);
       setActionMsg({ kind: 'success', text: willDisable ? '账号已禁用' : '账号已启用' });
       loadUsers();
-      // 更新弹窗里的用户状态
       setActionModal({
         ...actionModal,
         user: { ...actionModal.user, is_disabled: willDisable },
@@ -236,6 +341,13 @@ export default function AdminPanel({ session }) {
                   <p className="panel-kicker">创建兑换码</p>
                   <h2>生成新的兑换码</h2>
                 </div>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setBatchModalOpen(true)}
+                >
+                  批量生成
+                </button>
               </div>
 
               <form className="form" onSubmit={handleCreateCode}>
@@ -330,6 +442,36 @@ export default function AdminPanel({ session }) {
                 </button>
               </div>
 
+              {/* 搜索筛选 */}
+              <form className="search-bar" onSubmit={handleSearch}>
+                <input
+                  type="text"
+                  placeholder="搜索兑换码..."
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  className="search-input"
+                />
+                <select
+                  value={typeFilter}
+                  onChange={(e) => { setTypeFilter(e.target.value); setTimeout(loadCodes, 0); }}
+                  className="filter-select"
+                >
+                  <option value="all">全部类型</option>
+                  <option value="normal">普通次数码</option>
+                  <option value="permanent">永久会员码</option>
+                </select>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => { setStatusFilter(e.target.value); setTimeout(loadCodes, 0); }}
+                  className="filter-select"
+                >
+                  <option value="all">全部状态</option>
+                  <option value="active">未使用</option>
+                  <option value="used">已使用</option>
+                </select>
+                <button type="submit" className="secondary-button">搜索</button>
+              </form>
+
               {loading && <div className="admin-loading">加载中…</div>}
               {loadError && <div className="notice error" style={{ marginBottom: '12px' }}><span>✕</span><span>{loadError}</span></div>}
 
@@ -358,13 +500,29 @@ export default function AdminPanel({ session }) {
                           </span>
                         </td>
                         <td>
-                          <button
-                            type="button"
-                            className="text-button"
-                            onClick={() => copyCode(c.code)}
-                          >
-                            复制
-                          </button>
+                          <div className="action-btns">
+                            <button
+                              type="button"
+                              className="text-button"
+                              onClick={() => copyCode(c.code)}
+                            >
+                              复制
+                            </button>
+                            <button
+                              type="button"
+                              className="text-button"
+                              onClick={() => openEditModal(c)}
+                            >
+                              编辑
+                            </button>
+                            <button
+                              type="button"
+                              className="text-button danger"
+                              onClick={() => handleDeleteCode(c)}
+                            >
+                              删除
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -477,7 +635,165 @@ export default function AdminPanel({ session }) {
         )}
       </div>
 
-      {/* 操作弹窗 */}
+      {/* 批量生成弹窗 */}
+      {batchModalOpen && (
+        <div className="modal-overlay" onClick={() => setBatchModalOpen(false)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>批量生成兑换码</h3>
+              <button type="button" className="modal-close" onClick={() => setBatchModalOpen(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="admin-form-grid">
+                <div className="admin-form-row">
+                  <label>生成数量（1-100）</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={batchCount}
+                    onChange={(e) => setBatchCount(e.target.value)}
+                  />
+                </div>
+                <div className="admin-form-row">
+                  <label>类型</label>
+                  <select
+                    value={batchType}
+                    onChange={(e) => setBatchType(e.target.value)}
+                    className="select-input"
+                  >
+                    <option value="normal">普通次数码</option>
+                    <option value="permanent">永久会员码</option>
+                  </select>
+                </div>
+              </div>
+              <div className="admin-form-grid">
+                <div className="admin-form-row">
+                  <label>导出次数</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={batchExport}
+                    onChange={(e) => setBatchExport(e.target.value)}
+                  />
+                </div>
+                <div className="admin-form-row">
+                  <label>AI 生图次数</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={batchAi}
+                    onChange={(e) => setBatchAi(e.target.value)}
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={handleBatchCreate}
+                disabled={batchLoading}
+                style={{ marginTop: '16px', width: '100%' }}
+              >
+                {batchLoading ? '生成中…' : '开始生成'}
+              </button>
+
+              {batchResult.length > 0 && (
+                <div style={{ marginTop: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <strong>生成成功！共 {batchResult.length} 个</strong>
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={copyAllBatchCodes}
+                    >
+                      全部复制
+                    </button>
+                  </div>
+                  <div className="batch-codes-list">
+                    {batchResult.map((c) => (
+                      <div key={c.id} className="batch-code-item">
+                        <span className="code-cell">{c.code}</span>
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() => copyCode(c.code)}
+                        >
+                          复制
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 编辑兑换码弹窗 */}
+      {editCode && (
+        <div className="modal-overlay" onClick={() => setEditCode(null)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>编辑兑换码</h3>
+              <button type="button" className="modal-close" onClick={() => setEditCode(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-user">兑换码：<strong>{editCode.code}</strong></p>
+
+              {editMsg && (
+                <div className={`notice ${editMsg.kind}`}>
+                  <span>{editMsg.kind === 'success' ? '✓' : '✕'}</span>
+                  <span>{editMsg.text}</span>
+                </div>
+              )}
+
+              <div className="admin-form-row">
+                <label>类型</label>
+                <select
+                  value={editType}
+                  onChange={(e) => setEditType(e.target.value)}
+                  className="select-input"
+                >
+                  <option value="normal">普通次数码</option>
+                  <option value="permanent">永久会员码</option>
+                </select>
+              </div>
+              <div className="admin-form-grid">
+                <div className="admin-form-row">
+                  <label>导出次数</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editExport}
+                    onChange={(e) => setEditExport(e.target.value)}
+                  />
+                </div>
+                <div className="admin-form-row">
+                  <label>AI 生图次数</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editAi}
+                    onChange={(e) => setEditAi(e.target.value)}
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={handleUpdateCode}
+                disabled={editLoading}
+                style={{ marginTop: '16px', width: '100%' }}
+              >
+                {editLoading ? '保存中…' : '保存修改'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 用户操作弹窗 */}
       {actionModal && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
