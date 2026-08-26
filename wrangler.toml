@@ -1,3 +1,8 @@
-name = "dougegongfang"
+name = "shisanpindoufang"
+main = "src/worker.js"
 compatibility_date = "2024-01-01"
-pages_build_output_dir = "dist"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
