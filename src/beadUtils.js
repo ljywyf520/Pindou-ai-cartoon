@@ -143,7 +143,8 @@ export function drawPatternCanvas(canvas, grid, options = {}) {
   for (let y = 0; y < gridHeight; y++) {
     for (let x = 0; x < gridWidth; x++) {
       const cell = grid[y][x];
-      if (!cell) continue;
+      // 外部背景格不属于拼豆，预览和导出时都跳过。
+      if (!cell || cell.isExternal) continue;
 
       const hex = cell.hex || '#ffffff';
       ctx.fillStyle = hex;
