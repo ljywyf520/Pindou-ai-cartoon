@@ -10,6 +10,20 @@ function isNearWhite(r, g, b) {
   return min >= 242 && max - min <= 18;
 }
 
+function hexRgb(hex) {
+  return [
+    parseInt(hex.slice(1, 3), 16),
+    parseInt(hex.slice(3, 5), 16),
+    parseInt(hex.slice(5, 7), 16),
+  ];
+}
+
+function rgbDistanceSquared(hexA, hexB) {
+  const a = hexRgb(hexA);
+  const b = hexRgb(hexB);
+  return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
+}
+
 // 在原图采样网格上做边缘洪泛，避免把图案内部的白色一并当成背景。
 function findExternalWhiteCells(rawData, imageWidth, imageHeight, gridWidth, gridHeight) {
   const white = Array.from({ length: gridHeight }, () => Array(gridWidth).fill(false));
@@ -79,7 +93,10 @@ function removeIsolatedColorNoise(grid) {
       const dominant = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
       if (!dominant || dominant[1] < 3) continue;
       const replacement = neighbors.find((neighbor) => neighbor.paletteId === dominant[0]);
-      if (replacement) result[row][col] = { paletteId: replacement.paletteId, hex: replacement.hex };
+      // 只替换与邻色接近的边缘色晕；黑色眼睛、彩色腮红等高对比细节要保留。
+      if (replacement && rgbDistanceSquared(cell.hex, replacement.hex) <= 90 ** 2) {
+        result[row][col] = { paletteId: replacement.paletteId, hex: replacement.hex };
+      }
     }
   }
   return result;
@@ -129,7 +146,8 @@ export function convertImageToBeads(image, gridWidth, options = {}) {
   // backgroundPaletteIds: 白色背景色的色板 ID
   const result = runPipeline(pixels, imageWidth, imageHeight, {
     gridWidth,
-    mode: 'average',
+    // dominant 模式会在每个格内优先保留稀有特征色，避免细线、眼睛和高光被中心点采样吞掉。
+    mode: 'dominant',
     mergeThreshold,
     maxColors: 0,
     // 背景改由原图采样网格判断，避免量化后内部白色与边缘背景混淆。
