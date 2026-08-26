@@ -1,6 +1,89 @@
 // 图纸生成工具函数 - 使用 bead-core-main 专业算法
 import { runPipeline, computeColorStats, prepareSourcePixels } from '../bead-core-main/dist/index.js';
-import { palette, backgroundPaletteIds, colorName } from './palette.js';
+import { palette, colorName } from './palette.js';
+
+const WHITE_BACKGROUND_RATIO = 0.78;
+
+function isNearWhite(r, g, b) {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  return min >= 242 && max - min <= 18;
+}
+
+// 在原图采样网格上做边缘洪泛，避免把图案内部的白色一并当成背景。
+function findExternalWhiteCells(rawData, imageWidth, imageHeight, gridWidth, gridHeight) {
+  const white = Array.from({ length: gridHeight }, () => Array(gridWidth).fill(false));
+  const cellW = imageWidth / gridWidth;
+  const cellH = imageHeight / gridHeight;
+
+  for (let row = 0; row < gridHeight; row++) {
+    for (let col = 0; col < gridWidth; col++) {
+      let whiteCount = 0;
+      const sampleSize = 5;
+      for (let sy = 0; sy < sampleSize; sy++) {
+        for (let sx = 0; sx < sampleSize; sx++) {
+          const x = Math.min(imageWidth - 1, Math.floor((col + (sx + 0.5) / sampleSize) * cellW));
+          const y = Math.min(imageHeight - 1, Math.floor((row + (sy + 0.5) / sampleSize) * cellH));
+          const index = (y * imageWidth + x) * 4;
+          if (isNearWhite(rawData[index], rawData[index + 1], rawData[index + 2])) whiteCount++;
+        }
+      }
+      white[row][col] = whiteCount / (sampleSize * sampleSize) >= WHITE_BACKGROUND_RATIO;
+    }
+  }
+
+  const external = Array.from({ length: gridHeight }, () => Array(gridWidth).fill(false));
+  const queue = [];
+  const enqueue = (row, col) => {
+    if (!white[row]?.[col] || external[row][col]) return;
+    external[row][col] = true;
+    queue.push([row, col]);
+  };
+  for (let col = 0; col < gridWidth; col++) {
+    enqueue(0, col);
+    enqueue(gridHeight - 1, col);
+  }
+  for (let row = 0; row < gridHeight; row++) {
+    enqueue(row, 0);
+    enqueue(row, gridWidth - 1);
+  }
+  for (let index = 0; index < queue.length; index++) {
+    const [row, col] = queue[index];
+    enqueue(row - 1, col);
+    enqueue(row + 1, col);
+    enqueue(row, col - 1);
+    enqueue(row, col + 1);
+  }
+  return external;
+}
+
+// 只清理没有同色邻居的孤立彩色格，避免抹掉白色细节和连续像素边缘。
+function removeIsolatedColorNoise(grid) {
+  const height = grid.length;
+  const width = grid[0]?.length || 0;
+  const result = grid.map((row) => row.map((cell) => (cell ? { ...cell } : cell)));
+  const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+  for (let row = 0; row < height; row++) {
+    for (let col = 0; col < width; col++) {
+      const cell = grid[row][col];
+      if (!cell || cell.isExternal || cell.paletteId === 'H2') continue;
+      const neighbors = [];
+      for (const [dr, dc] of directions) {
+        const neighbor = grid[row + dr]?.[col + dc];
+        if (neighbor && !neighbor.isExternal) neighbors.push(neighbor);
+      }
+      if (neighbors.some((neighbor) => neighbor.paletteId === cell.paletteId)) continue;
+      const counts = new Map();
+      for (const neighbor of neighbors) counts.set(neighbor.paletteId, (counts.get(neighbor.paletteId) || 0) + 1);
+      const dominant = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+      if (!dominant || dominant[1] < 3) continue;
+      const replacement = neighbors.find((neighbor) => neighbor.paletteId === dominant[0]);
+      if (replacement) result[row][col] = { paletteId: replacement.paletteId, hex: replacement.hex };
+    }
+  }
+  return result;
+}
 
 // 将图片转换为拼豆网格（使用 bead-core-main 的专业算法）
 export function convertImageToBeads(image, gridWidth, options = {}) {
@@ -33,13 +116,13 @@ export function convertImageToBeads(image, gridWidth, options = {}) {
 
   const imgData = ctx.getImageData(0, 0, imageWidth, imageHeight);
 
-  // 像素预处理：锐化（与原始 studio 版本一致）
+  // 像素画边缘不做锐化，避免高对比轮廓产生彩色光晕和孤立杂点。
   const pixels = prepareSourcePixels(
     imgData.data,
     imageWidth,
     imageHeight,
     { brightness: 0, contrast: 0, saturation: 0 },
-    { denoise: false, sharpen: true }
+    { denoise: false, sharpen: false }
   );
 
   // 使用 bead-core-main 的内置 flood fill 去背景
@@ -49,18 +132,35 @@ export function convertImageToBeads(image, gridWidth, options = {}) {
     mode: 'average',
     mergeThreshold,
     maxColors: 0,
-    backgroundPaletteIds: ignoreEdgeWhite ? ['H2'] : [],
+    // 背景改由原图采样网格判断，避免量化后内部白色与边缘背景混淆。
+    backgroundPaletteIds: [],
     excludedPaletteIds: [],
     palette,
     flatTile: false,
   });
 
-  const grid = result.grid;
+  let grid = result.grid;
+
+  if (ignoreEdgeWhite) {
+    const externalWhite = findExternalWhiteCells(
+      imgData.data,
+      imageWidth,
+      imageHeight,
+      result.width,
+      result.height,
+    );
+    for (let row = 0; row < grid.length; row++) {
+      for (let col = 0; col < grid[row].length; col++) {
+        if (externalWhite[row][col]) grid[row][col] = { ...grid[row][col], isExternal: true };
+      }
+    }
+  }
+
+  grid = removeIsolatedColorNoise(grid);
 
   // 填补空单元格：未匹配到色板的格子自动匹配最近色（Q版/浅色区域缺色修复）
   // 注意：白色背景（H2）被去背景后会变成 null，这些不填补，保持空白
   let fixedCount = 0;
-  const bgColorHex = '#FFFFFD'; // H2 白色背景色
   for (let r = 0; r < grid.length; r++) {
     for (let c = 0; c < grid[r].length; c++) {
       const cell = grid[r][c];
