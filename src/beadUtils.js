@@ -64,36 +64,34 @@ export function convertImageToBeads(image, gridWidth, options = {}) {
     const gridW = grid[0]?.length || 0;
     let minRow = gridH, maxRow = -1, minCol = gridW, maxCol = -1;
 
-    // 用原始图像数据（锐化前）来判断是否为背景白色
-    // 纯白色（RGB 都 >= 250）才算背景，阈值稍放宽避免 JPG 压缩噪点
+    // 用原始图像数据（锐化前）来判断
+    // 阈值放宽到 240，避免 JPG 压缩导致白色背景偏灰被误判为内容
     const rawData = imgData.data;
-    const isBgPixel = (r, g, b) => r >= 250 && g >= 250 && b >= 250;
+    const isWhite = (r, g, b) => r >= 240 && g >= 240 && b >= 240;
 
-    // 遍历每个格子，取格子中心 + 4 个角共 5 个点判断
-    // 只要有一个点不是白色，就认为这个格子属于图案
+    // 每个格子均匀采样 9 个点
+    // 白色点占比 >= 70% 才认为是背景格子，否则算图案内容
     for (let r = 0; r < gridH; r++) {
       for (let c = 0; c < gridW; c++) {
         const cellW = imageWidth / gridW;
         const cellH = imageHeight / gridH;
-        const cx = Math.floor((c + 0.5) * cellW);
-        const cy = Math.floor((r + 0.5) * cellH);
-        // 采样 5 个点：中心 + 四角
-        const samples = [
-          [cx, cy],
-          [Math.floor(c * cellW + 1), Math.floor(r * cellH + 1)],
-          [Math.floor((c + 1) * cellW - 1), Math.floor(r * cellH + 1)],
-          [Math.floor(c * cellW + 1), Math.floor((r + 1) * cellH - 1)],
-          [Math.floor((c + 1) * cellW - 1), Math.floor((r + 1) * cellH - 1)],
-        ];
-        let hasNonBg = false;
-        for (const [sx, sy] of samples) {
-          const idx = (sy * imageWidth + sx) * 4;
-          if (!isBgPixel(rawData[idx], rawData[idx + 1], rawData[idx + 2])) {
-            hasNonBg = true;
-            break;
+        const samples = [];
+        for (let dy = 0; dy < 3; dy++) {
+          for (let dx = 0; dx < 3; dx++) {
+            const sx = Math.floor(c * cellW + cellW * (dx + 0.5) / 3);
+            const sy = Math.floor(r * cellH + cellH * (dy + 0.5) / 3);
+            samples.push([sx, sy]);
           }
         }
-        if (hasNonBg) {
+        let whiteCount = 0;
+        for (const [sx, sy] of samples) {
+          const idx = (sy * imageWidth + sx) * 4;
+          if (isWhite(rawData[idx], rawData[idx + 1], rawData[idx + 2])) {
+            whiteCount++;
+          }
+        }
+        // 白色点少于 70% = 这个格子有图案内容
+        if (whiteCount / samples.length < 0.7) {
           if (r < minRow) minRow = r;
           if (r > maxRow) maxRow = r;
           if (c < minCol) minCol = c;
@@ -102,7 +100,7 @@ export function convertImageToBeads(image, gridWidth, options = {}) {
       }
     }
 
-    // 边界外的格子标记为外部背景（直接置空，确保画图时跳过）
+    // 边界外的格子直接置空（背景）
     if (maxRow >= 0) {
       minRow = Math.max(0, minRow - 1);
       maxRow = Math.min(gridH - 1, maxRow + 1);
@@ -113,7 +111,6 @@ export function convertImageToBeads(image, gridWidth, options = {}) {
         for (let c = 0; c < gridW; c++) {
           const isOutside = r < minRow || r > maxRow || c < minCol || c > maxCol;
           if (isOutside) {
-            // 直接置空，画图时会跳过；同时统计颜色时也不会计入
             grid[r][c] = null;
           }
         }
