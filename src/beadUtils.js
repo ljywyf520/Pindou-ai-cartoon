@@ -43,18 +43,53 @@ export function convertImageToBeads(image, gridWidth, options = {}) {
   );
 
   // 使用 bead-core-main 的专业管线（和原始版本完全一致的参数）
+  // 注意：backgroundPaletteIds 传空，不用内置的 flood fill（容易误删内部白色）
   const result = runPipeline(pixels, imageWidth, imageHeight, {
     gridWidth,
     mode: 'average',
     mergeThreshold,
     maxColors: 0,
-    backgroundPaletteIds: ignoreEdgeWhite ? backgroundPaletteIds : [],
+    backgroundPaletteIds: [],
     excludedPaletteIds: [],
     palette,
     flatTile: false,
   });
 
   const grid = result.grid;
+
+  // 智能去背景：用 bounding box 方式（只删除图案边界外的格子）
+  // 比 flood fill 更安全，不会误删图案内部的白色
+  if (ignoreEdgeWhite) {
+    const bgSet = new Set(backgroundPaletteIds);
+    let minRow = grid.length, maxRow = -1, minCol = grid[0].length, maxCol = -1;
+
+    // 找到所有非背景色格子的边界
+    for (let r = 0; r < grid.length; r++) {
+      for (let c = 0; c < grid[r].length; c++) {
+        const cell = grid[r][c];
+        if (cell && cell.paletteId && !bgSet.has(cell.paletteId)) {
+          if (r < minRow) minRow = r;
+          if (r > maxRow) maxRow = r;
+          if (c < minCol) minCol = c;
+          if (c > maxCol) maxCol = c;
+        }
+      }
+    }
+
+    // 边界外的格子标记为外部背景
+    if (maxRow >= 0) {
+      for (let r = 0; r < grid.length; r++) {
+        for (let c = 0; c < grid[r].length; c++) {
+          const cell = grid[r][c];
+          if (!cell) continue;
+          const isOutside = r < minRow || r > maxRow || c < minCol || c > maxCol;
+          if (isOutside && bgSet.has(cell.paletteId)) {
+            cell.isExternal = true;
+          }
+        }
+      }
+    }
+  }
 
   // 填补空单元格：未匹配到色板的格子自动匹配最近色（Q版/浅色区域缺色修复）
   let fixedCount = 0;
@@ -129,6 +164,10 @@ export function drawPatternCanvas(canvas, grid, options = {}) {
   canvas.width = gridWidth * cellSize;
   canvas.height = gridHeight * cellSize;
   const ctx = canvas.getContext('2d');
+
+  // 填充白色背景（避免 PNG 透明区域显示为黑色）
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // 填充每个格子
   for (let y = 0; y < gridHeight; y++) {
