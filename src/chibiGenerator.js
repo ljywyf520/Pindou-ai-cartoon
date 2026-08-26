@@ -286,7 +286,8 @@ export async function generateChibi(image, options = {}) {
   }
 
   try {
-    const response = await fetch('/api/seedream', {
+    const endpoint = import.meta.env.VITE_SEEDREAM_ENDPOINT || '/api/seedream';
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),
